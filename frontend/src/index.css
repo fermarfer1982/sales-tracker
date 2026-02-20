@@ -1,0 +1,36 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #f5f6fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.status-green { color: #198754; font-weight: 600; }
+.status-yellow { color: #ffc107; font-weight: 600; }
+.status-red { color: #dc3545; font-weight: 600; }
+
+.badge-green { background-color: #198754; color: white; }
+.badge-yellow { background-color: #ffc107; color: #333; }
+.badge-red { background-color: #dc3545; color: white; }
+
+.geo-ok { color: #198754; }
+.geo-loading { color: #0d6efd; }
+.geo-error { color: #dc3545; }
+
+.card-action {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.card-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+@media (max-width: 576px) {
+  .btn-lg-mobile {
+    font-size: 1.1rem;
+    padding: 14px 20px;
+  }
+}
