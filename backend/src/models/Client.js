@@ -39,6 +39,5 @@ const clientSchema = new mongoose.Schema(
 );
 
 clientSchema.index({ legalName: 'text' });
-clientSchema.index({ taxId: 1 });
 
 module.exports = mongoose.model('Client', clientSchema);
