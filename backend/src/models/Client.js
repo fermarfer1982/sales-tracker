@@ -15,7 +15,7 @@ const geoSubSchema = new mongoose.Schema(
 const clientSchema = new mongoose.Schema(
   {
     legalName: { type: String, required: true, trim: true },
-    taxId: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    taxId: { type: String, required: true, uppercase: true, trim: true },
     province: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
     zoneId: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', required: true },
@@ -39,6 +39,9 @@ const clientSchema = new mongoose.Schema(
 );
 
 clientSchema.index({ legalName: 'text' });
-clientSchema.index({ taxId: 1 });
+clientSchema.index(
+  { taxId: 1 },
+  { unique: true, partialFilterExpression: { deletedAt: null } }
+);
 
 module.exports = mongoose.model('Client', clientSchema);
