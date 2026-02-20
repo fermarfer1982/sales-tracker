@@ -46,7 +46,7 @@ async function updateUser(req, res) {
   }
 }
 
-async function setActive(active) {
+function setActive(active) {
   return async function (req, res) {
     try {
       const user = await User.findByIdAndUpdate(req.params.id, { isActive: active }, { new: true }).select('-passwordHash');
