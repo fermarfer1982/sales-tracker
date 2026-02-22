@@ -2,9 +2,11 @@
 
 const Joi = require('joi');
 
+const internalEmail = Joi.string().email({ tlds: { allow: false } }).lowercase();
+
 const createUser = Joi.object({
   name: Joi.string().trim().required(),
-  email: Joi.string().email().lowercase().required(),
+  email: internalEmail.required(),
   password: Joi.string().min(8).required(),
   role: Joi.string().valid('sales', 'manager', 'admin').required(),
   zoneId: Joi.string().allow(null, '').default(null),
@@ -13,7 +15,7 @@ const createUser = Joi.object({
 
 const updateUser = Joi.object({
   name: Joi.string().trim(),
-  email: Joi.string().email().lowercase(),
+  email: internalEmail,
   zoneId: Joi.string().allow(null, ''),
   managerUserId: Joi.string().allow(null, ''),
   password: Joi.string().min(8),
