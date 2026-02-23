@@ -24,6 +24,34 @@ function formatCoords(geo) {
   return `${geo.lat.toFixed(6)}, ${geo.lng.toFixed(6)}`;
 }
 
+function googleMapsUrl(geo) {
+  if (!geo || typeof geo.lat !== 'number' || typeof geo.lng !== 'number') return null;
+  return `https://www.google.com/maps?q=${geo.lat},${geo.lng}`;
+}
+
+function PrecisionBadge({ accuracyMeters }) {
+  const accuracy = Number(accuracyMeters);
+  if (!Number.isFinite(accuracy)) return <span className="badge bg-secondary">Sin precisión</span>;
+  if (accuracy <= 30) return <span className="badge bg-success">Precisión alta (±{Math.round(accuracy)} m)</span>;
+  if (accuracy <= 100) return <span className="badge bg-warning text-dark">Precisión media (±{Math.round(accuracy)} m)</span>;
+  return <span className="badge bg-danger">Precisión baja (±{Math.round(accuracy)} m)</span>;
+}
+
+function GeoCell({ geo }) {
+  const mapsUrl = googleMapsUrl(geo);
+  return (
+    <>
+      <div>{formatCoords(geo)}</div>
+      <div className="mt-1"><PrecisionBadge accuracyMeters={geo?.accuracyMeters} /></div>
+      {mapsUrl && (
+        <a href={mapsUrl} target="_blank" rel="noreferrer" className="small">
+          Ver en Google Maps
+        </a>
+      )}
+    </>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [kpis, setKpis] = useState(null);
   const [commercialStatus, setCommercialStatus] = useState([]);
@@ -147,7 +175,7 @@ export default function AdminDashboardPage() {
       <div className="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
         <div>
           <h6 className="fw-bold mb-0">Registros de comerciales y geolocalización</h6>
-          <small className="text-muted">Exacta = checkout dentro del área esperada y precisión GPS ≤ 30 m</small>
+          <small className="text-muted">Exacta = checkout dentro del área esperada, precisión alta (≤ 30 m) y enlace directo a Google Maps</small>
         </div>
         <div style={{ minWidth: 280 }}>
           <label className="form-label small mb-1">Filtrar comercial</label>
@@ -198,18 +226,8 @@ export default function AdminDashboardPage() {
                         <small className="text-muted">{a?.userId?.email || '-'}</small>
                       </td>
                       <td>{a?.clientId?.legalName || '-'}</td>
-                      <td>
-                        <div>{formatCoords(checkInGeo)}</div>
-                        <small className="text-muted">
-                          {Number.isFinite(Number(checkInGeo?.accuracyMeters)) ? `±${Math.round(checkInGeo.accuracyMeters)} m` : '-'}
-                        </small>
-                      </td>
-                      <td>
-                        <div>{formatCoords(checkOutGeo)}</div>
-                        <small className="text-muted">
-                          {Number.isFinite(Number(checkOutGeo?.accuracyMeters)) ? `±${Math.round(checkOutGeo.accuracyMeters)} m` : '-'}
-                        </small>
-                      </td>
+                      <td><GeoCell geo={checkInGeo} /></td>
+                      <td><GeoCell geo={checkOutGeo} /></td>
                       <td>{Number.isFinite(Number(distance)) ? `${Math.round(distance)} m` : '-'}</td>
                       <td><GeoVerificationBadge activity={a} /></td>
                     </tr>
