@@ -807,6 +807,40 @@ sudo chown -R www-data:www-data /var/www/sales-tracker/frontend/dist
 
 ---
 
+
+### El menú "Admin" no se despliega en el dashboard
+
+Suele pasar cuando el servidor sigue sirviendo un build antiguo del frontend.
+
+Ejecuta **exactamente** estos comandos en tu servidor:
+
+```bash
+cd /var/www/sales-tracker
+
+git pull origin $(git branch --show-current)
+
+cd frontend
+npm install
+npm run build
+
+# Opcional: recargar Nginx para limpiar cachés de archivos estáticos
+sudo systemctl reload nginx
+```
+
+Luego en el navegador:
+1. Haz un recargado forzado con `Ctrl + F5` (Windows/Linux) o `Cmd + Shift + R` (Mac).
+2. Vuelve a iniciar sesión con un usuario `admin`.
+3. Prueba el menú **Admin**.
+
+Si aún falla, revisa que estés en el commit correcto:
+
+```bash
+cd /var/www/sales-tracker
+git log -1 --oneline
+```
+
+---
+
 ### "CIF/NIF inválido" al crear un cliente
 
 El sistema valida el algoritmo real español. Usa el seed para ver ejemplos válidos:
