@@ -8,9 +8,15 @@ const { apiResponse, apiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
 
 async function login(req, res) {
-  const { email, password } = req.body;
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!email || !password) {
+      await audit({ entityName: 'Auth', entityId: email || 'unknown', action: 'LOGIN_FAIL', metadata: { reason: 'invalid_payload' } });
+      return apiError(res, 401, 'Credenciales incorrectas');
+    }
+
+    const user = await User.findOne({ email });
     if (!user) {
       await audit({ entityName: 'Auth', entityId: email, action: 'LOGIN_FAIL', metadata: { reason: 'user_not_found' } });
       return apiError(res, 401, 'Credenciales incorrectas');
