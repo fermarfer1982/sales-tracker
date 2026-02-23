@@ -10,7 +10,7 @@ const createClient = Joi.object({
   zoneId: Joi.string().required(),
   segmentId: Joi.string().required(),
   phone: Joi.string().allow(null, '').default(null),
-  email: Joi.string().email().lowercase().allow(null, '').default(null),
+  email: Joi.string().email({ tlds: { allow: false } }).lowercase().allow(null, '').default(null),
   notes: Joi.string().allow(null, '').default(null),
   geo: Joi.object({
     lat: Joi.number().required(),
@@ -27,7 +27,7 @@ const updateClient = Joi.object({
   zoneId: Joi.string(),
   segmentId: Joi.string(),
   phone: Joi.string().allow(null, ''),
-  email: Joi.string().email().lowercase().allow(null, ''),
+  email: Joi.string().email({ tlds: { allow: false } }).lowercase().allow(null, ''),
   notes: Joi.string().allow(null, ''),
 });
 
