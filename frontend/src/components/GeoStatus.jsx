@@ -8,6 +8,7 @@ export function GeoStatus({ status }) {
     denied: { cls: 'geo-error', icon: '✕', label: 'GPS denegado' },
     unavailable: { cls: 'geo-error', icon: '✕', label: 'GPS no disponible' },
     timeout: { cls: 'geo-error', icon: '✕', label: 'Timeout GPS' },
+    low_accuracy: { cls: 'geo-error', icon: '✕', label: 'Precisión GPS insuficiente' },
   };
   const { cls, icon, label } = map[status] || map.idle;
   return (
@@ -23,6 +24,7 @@ export function GeoAlert({ status, onRetry }) {
     denied: 'Has denegado el acceso a la ubicación. Activa el GPS en la configuración del navegador.',
     unavailable: 'La geolocalización no está disponible en este dispositivo/navegador.',
     timeout: 'Timeout al capturar la ubicación. Inténtalo de nuevo.',
+    low_accuracy: 'La ubicación capturada tiene poca precisión. Activa "ubicación precisa" o usa el móvil con GPS y vuelve a intentarlo.',
   };
   return (
     <div className="alert alert-danger d-flex justify-content-between align-items-center mt-2">

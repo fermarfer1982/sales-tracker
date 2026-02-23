@@ -69,6 +69,9 @@ export default function ActivitiesTodayPage() {
     } catch (err) {
       if (err.message === 'denied' || err.message === 'unavailable' || err.message === 'timeout') {
         setError('');
+      } else if (err.message === 'low_accuracy') {
+        const km = err.details?.accuracyMeters ? (err.details.accuracyMeters / 1000).toFixed(1) : null;
+        setError(`Ubicación imprecisa${km ? ` (~${km} km)` : ''}. Activa ubicación precisa o usa el móvil para registrar la visita.`);
       } else {
         setError(err.response?.data?.message || 'Error al iniciar visita');
       }
@@ -101,6 +104,9 @@ export default function ActivitiesTodayPage() {
     } catch (err) {
       if (err.message === 'denied' || err.message === 'unavailable' || err.message === 'timeout') {
         setError('');
+      } else if (err.message === 'low_accuracy') {
+        const km = err.details?.accuracyMeters ? (err.details.accuracyMeters / 1000).toFixed(1) : null;
+        setError(`Ubicación imprecisa${km ? ` (~${km} km)` : ''}. Activa ubicación precisa o usa el móvil para registrar la visita.`);
       } else {
         setError(err.response?.data?.message || 'Error al finalizar visita');
       }
