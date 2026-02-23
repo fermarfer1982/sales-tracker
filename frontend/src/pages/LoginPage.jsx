@@ -20,7 +20,9 @@ export default function LoginPage() {
       login(res.data.data.token, res.data.data.user);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
+      const backendErrors = err.response?.data?.errors;
+      if (Array.isArray(backendErrors) && backendErrors.length) setError(backendErrors.join(', '));
+      else setError(err.response?.data?.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
