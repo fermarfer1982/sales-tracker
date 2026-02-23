@@ -164,7 +164,11 @@ async function teamActivities(req, res) {
       if (userId && ids.map(String).includes(userId)) filter.userId = userId;
       else filter.userId = { $in: ids };
     } else if (req.user.role === 'admin') {
-      if (userId) filter.userId = userId;
+      const User = require('../models/User');
+      const salesUsers = await User.find({ role: 'sales' }).select('_id');
+      const salesIds = salesUsers.map(u => String(u._id));
+      if (userId && salesIds.includes(String(userId))) filter.userId = userId;
+      else filter.userId = { $in: salesUsers.map(u => u._id) };
     }
     if (from || to) {
       filter.activityDate = {};
