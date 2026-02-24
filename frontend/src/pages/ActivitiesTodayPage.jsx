@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { activityService, catalogService } from '../services';
+import { activityService, catalogService, settingsService } from '../services';
 import { useGeolocation } from '../hooks/useGeolocation';
 import ClientAutocomplete from '../components/ClientAutocomplete';
 import { GeoStatus, GeoAlert } from '../components/GeoStatus';
@@ -28,10 +28,12 @@ export default function ActivitiesTodayPage() {
   const { geo, geoStatus, capture, reset } = useGeolocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [requiredAccuracy, setRequiredAccuracy] = useState(30);
 
   useEffect(() => {
     loadCatalogs();
     loadTodayActivities();
+    loadSettings();
   }, []);
 
   async function loadCatalogs() {
@@ -43,6 +45,15 @@ export default function ActivitiesTodayPage() {
     setActivityTypes(at.data.data);
     setProducts(pr.data.data);
     setOutcomes(oc.data.data);
+  }
+
+
+  async function loadSettings() {
+    try {
+      const res = await settingsService.get();
+      const maxGps = Number(res.data?.data?.maxGpsAccuracyMeters);
+      if (Number.isFinite(maxGps) && maxGps > 0) setRequiredAccuracy(maxGps);
+    } catch {}
   }
 
   async function loadTodayActivities() {
@@ -57,7 +68,7 @@ export default function ActivitiesTodayPage() {
     if (!activityTypeId) return setError('Selecciona el tipo de actividad');
     setLoading(true);
     try {
-      const capturedGeo = await capture();
+      const capturedGeo = await capture({ desiredAccuracyMeters: requiredAccuracy, timeoutMs: 25000 });
       const res = await activityService.checkIn({
         clientId,
         activityTypeId,
@@ -84,7 +95,7 @@ export default function ActivitiesTodayPage() {
     if (!notes || notes.length < 10) return setError('Las notas deben tener al menos 10 caracteres');
     setLoading(true);
     try {
-      const capturedGeo = await capture();
+      const capturedGeo = await capture({ desiredAccuracyMeters: requiredAccuracy, timeoutMs: 25000 });
       await activityService.checkOut(currentActivity._id, {
         productId, outcomeId, notes, nextActionDate: nextActionDate || null, nextActionNotes: nextActionNotes || null,
         geo: capturedGeo,
@@ -165,6 +176,7 @@ export default function ActivitiesTodayPage() {
               </div>
               <div className="mt-2 text-center">
                 <GeoStatus status={geoStatus} />
+                <small className="text-muted">Objetivo de precisión: ±{requiredAccuracy} m {geo?.accuracyMeters ? `(actual ±${Math.round(geo.accuracyMeters)} m)` : ''}</small>
               </div>
             </div>
           </div>
@@ -210,6 +222,7 @@ export default function ActivitiesTodayPage() {
               </button>
               <div className="mt-2 text-center">
                 <GeoStatus status={geoStatus} />
+                <small className="text-muted">Objetivo de precisión: ±{requiredAccuracy} m {geo?.accuracyMeters ? `(actual ±${Math.round(geo.accuracyMeters)} m)` : ''}</small>
               </div>
               <p className="text-muted small mt-2 text-center">La geolocalización es obligatoria para finalizar la visita.</p>
             </div>

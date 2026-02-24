@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { activityService, catalogService } from '../services';
+import { activityService, catalogService, settingsService } from '../services';
 import { useGeolocation } from '../hooks/useGeolocation';
 import ClientAutocomplete from '../components/ClientAutocomplete';
 import { GeoStatus, GeoAlert } from '../components/GeoStatus';
@@ -26,6 +26,7 @@ export default function QuickRegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [requiredAccuracy, setRequiredAccuracy] = useState(30);
 
   useEffect(() => {
     Promise.all([catalogService.list('activity-types'), catalogService.list('products'), catalogService.list('outcomes')])
@@ -34,6 +35,11 @@ export default function QuickRegisterPage() {
         setProducts(pr.data.data);
         setOutcomes(oc.data.data);
       });
+
+    settingsService.get().then((res) => {
+      const maxGps = Number(res.data?.data?.maxGpsAccuracyMeters);
+      if (Number.isFinite(maxGps) && maxGps > 0) setRequiredAccuracy(maxGps);
+    }).catch(() => {});
   }, []);
 
   async function handleSubmit(e) {
@@ -44,7 +50,7 @@ export default function QuickRegisterPage() {
     if (!durationMinutes || Number(durationMinutes) <= 0) return setError('La duración debe ser mayor a 0');
     setLoading(true);
     try {
-      const capturedGeo = await capture();
+      const capturedGeo = await capture({ desiredAccuracyMeters: requiredAccuracy, timeoutMs: 25000 });
       await activityService.quick({
         clientId, activityTypeId, productId, outcomeId, activityDate, notes,
         durationMinutes: Number(durationMinutes),
@@ -130,7 +136,7 @@ export default function QuickRegisterPage() {
               </div>
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <GeoStatus status={geoStatus} />
-                <small className="text-muted">Se capturará GPS al guardar</small>
+                <small className="text-muted">Objetivo: ±{requiredAccuracy} m {geo?.accuracyMeters ? `(actual ±${Math.round(geo.accuracyMeters)} m)` : ''}</small>
               </div>
               <button type="submit" className="btn btn-primary w-100 btn-lg" disabled={loading || geoStatus === 'loading'}>
                 {loading ? <span className="spinner-border spinner-border-sm me-2" /> : null}
