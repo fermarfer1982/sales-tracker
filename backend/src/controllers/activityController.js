@@ -23,9 +23,37 @@ async function getGeofenceRadius() {
   return setting ? Number(setting.value) : 300;
 }
 
+async function getRequiredGpsAccuracyMeters() {
+  const setting = await AppSetting.findOne({ key: 'maxGpsAccuracyMeters' });
+  return setting ? Number(setting.value) : 30;
+}
+
+async function validateGeoPrecision(geo) {
+  const requiredAccuracy = await getRequiredGpsAccuracyMeters();
+  const accuracy = Number(geo?.accuracyMeters);
+  if (geo?.status && geo.status !== 'ok') {
+    return { valid: false, requiredAccuracy, accuracy: null, reason: 'gps_status' };
+  }
+  if (!Number.isFinite(accuracy)) {
+    return { valid: false, requiredAccuracy, accuracy: null, reason: 'gps_missing_accuracy' };
+  }
+  if (accuracy > requiredAccuracy) {
+    return { valid: false, requiredAccuracy, accuracy, reason: 'gps_low_precision' };
+  }
+  return { valid: true, requiredAccuracy, accuracy, reason: null };
+}
+
 async function checkIn(req, res) {
   try {
     const { clientId, activityTypeId, activityDate, geo } = req.body;
+    const precisionValidation = await validateGeoPrecision(geo);
+    if (!precisionValidation.valid) {
+      return apiError(
+        res,
+        422,
+        `GPS no válido. Se requiere precisión ≤ ${precisionValidation.requiredAccuracy} m y se recibió ${Number.isFinite(precisionValidation.accuracy) ? Math.round(precisionValidation.accuracy) : 'sin dato'} m.`
+      );
+    }
     const activity = await Activity.create({
       userId: req.user._id,
       clientId,
@@ -53,6 +81,15 @@ async function checkOut(req, res) {
       return apiError(res, 403, 'No autorizado');
     }
     const { productId, outcomeId, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
+
+    const precisionValidation = await validateGeoPrecision(geo);
+    if (!precisionValidation.valid) {
+      return apiError(
+        res,
+        422,
+        `GPS no válido. Se requiere precisión ≤ ${precisionValidation.requiredAccuracy} m y se recibió ${Number.isFinite(precisionValidation.accuracy) ? Math.round(precisionValidation.accuracy) : 'sin dato'} m.`
+      );
+    }
 
     let computedDuration = durationMinutes;
     if (activity.checkIn && activity.checkIn.at) {
@@ -94,6 +131,15 @@ async function checkOut(req, res) {
 async function quickCreate(req, res) {
   try {
     const { clientId, activityTypeId, productId, outcomeId, activityDate, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
+
+    const precisionValidation = await validateGeoPrecision(geo);
+    if (!precisionValidation.valid) {
+      return apiError(
+        res,
+        422,
+        `GPS no válido. Se requiere precisión ≤ ${precisionValidation.requiredAccuracy} m y se recibió ${Number.isFinite(precisionValidation.accuracy) ? Math.round(precisionValidation.accuracy) : 'sin dato'} m.`
+      );
+    }
 
     const client = await Client.findById(clientId);
     let distanceToClientMeters = null;

@@ -6,6 +6,7 @@ const SETTINGS_META = [
   { key: 'reportCutoffMinute', label: 'Minuto de corte (0-59)', type: 'number', min: 0, max: 59 },
   { key: 'timezone', label: 'Zona horaria', type: 'text' },
   { key: 'geofenceRadiusMeters', label: 'Radio geofence (metros)', type: 'number', min: 50 },
+  { key: 'maxGpsAccuracyMeters', label: 'Precisión GPS máxima permitida (metros)', type: 'number', min: 5, max: 200 },
   { key: 'adminAlertEmail', label: 'Email de alerta admin', type: 'email' },
 ];
 

@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = [
   { key: 'reportCutoffMinute', value: 30, description: 'Minuto de corte para notificaciones (0-59)' },
   { key: 'timezone', value: 'Europe/Madrid', description: 'Zona horaria del servidor' },
   { key: 'geofenceRadiusMeters', value: 300, description: 'Radio en metros para validar geofence en checkout' },
+  { key: 'maxGpsAccuracyMeters', value: 30, description: 'Precisión GPS máxima permitida para registrar actividad' },
   { key: 'adminAlertEmail', value: '', description: 'Email de alerta para administrador' },
 ];
 
