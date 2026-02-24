@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services';
+import { useTheme } from '../context/ThemeContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,8 +29,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+    <div className="d-flex justify-content-center align-items-center vh-100">
       <div className="card shadow-sm p-4" style={{ width: '100%', maxWidth: 400 }}>
+        <div className="d-flex justify-content-end mb-3">
+          <select
+            className="form-select form-select-sm"
+            value={theme}
+            onChange={e => setTheme(e.target.value)}
+            aria-label="Selector de tema"
+            style={{ width: 130 }}
+          >
+            <option value="light">☀️ Claro</option>
+            <option value="dark">🌙 Oscuro</option>
+          </select>
+        </div>
         <div className="text-center mb-4">
           <h2 className="fw-bold text-primary">Sales Tracker</h2>
           <p className="text-muted">Accede con tu cuenta</p>

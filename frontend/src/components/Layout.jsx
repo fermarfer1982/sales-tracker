@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -71,6 +73,16 @@ export default function Layout() {
               )}
             </ul>
             <div className="d-flex align-items-center gap-2">
+              <select
+                className="form-select form-select-sm"
+                value={theme}
+                onChange={e => setTheme(e.target.value)}
+                aria-label="Selector de tema"
+                style={{ width: 130 }}
+              >
+                <option value="light">☀️ Claro</option>
+                <option value="dark">🌙 Oscuro</option>
+              </select>
               <span className="text-white-50 small d-none d-lg-inline">
                 {user?.name} ({user?.role})
               </span>
