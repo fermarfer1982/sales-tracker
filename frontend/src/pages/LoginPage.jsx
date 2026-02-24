@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services';
 import { useTheme } from '../context/ThemeContext';
+import logoRamiro from '../assets/logo-ramiro-arnedo.svg';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -44,6 +45,7 @@ export default function LoginPage() {
           </select>
         </div>
         <div className="text-center mb-4">
+          <img src={logoRamiro} alt="Logo Ramiro Arnedo" width={88} height={88} className="mb-2" style={{ borderRadius: '50%' }} />
           <h2 className="fw-bold text-primary">Sales Tracker</h2>
           <p className="text-muted">Accede con tu cuenta</p>
         </div>

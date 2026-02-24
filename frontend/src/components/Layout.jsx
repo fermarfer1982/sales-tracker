@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import logoRamiro from '../assets/logo-ramiro-arnedo.svg';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -21,7 +22,10 @@ export default function Layout() {
     <div>
       <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
         <div className="container-fluid">
-          <Link className="navbar-brand fw-bold" to="/">Sales Tracker</Link>
+          <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
+            <img src={logoRamiro} alt="Logo Ramiro Arnedo" width={36} height={36} style={{ borderRadius: '50%' }} />
+            <span>Sales Tracker</span>
+          </Link>
           <button className="navbar-toggler" type="button" onClick={() => setMenuOpen(!menuOpen)}>
             <span className="navbar-toggler-icon" />
           </button>
