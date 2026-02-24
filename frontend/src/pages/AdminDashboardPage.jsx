@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { dashboardService, complianceService } from '../services';
 import { todayISO, formatDate } from '../utils';
 
@@ -32,7 +33,12 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <h4 className="fw-bold mb-3">Dashboard de cumplimiento</h4>
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h4 className="fw-bold mb-0">Dashboard de cumplimiento</h4>
+        <Link to="/admin/records" className="btn btn-outline-primary btn-sm">
+          Ver registros
+        </Link>
+      </div>
       <div className="row g-2 mb-3">
         <div className="col-auto">
           <label className="form-label mb-0 small">Desde</label>
