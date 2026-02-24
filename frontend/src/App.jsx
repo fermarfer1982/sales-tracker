@@ -16,6 +16,7 @@ import AdminCatalogsPage from './pages/AdminCatalogsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AuditPage from './pages/AuditPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminRecordsPage from './pages/AdminRecordsPage';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/audit" element={<AuditPage />} />
                 <Route path="/admin/settings" element={<SettingsPage />} />
+                <Route path="/admin/records" element={<AdminRecordsPage />} />
               </Route>
             </Route>
           </Route>

@@ -71,6 +71,7 @@ export default function Layout() {
                     <li><Link className="dropdown-item" to="/admin/catalogs" onClick={() => setMenuOpen(false)}>Catálogos</Link></li>
                     <li><Link className="dropdown-item" to="/admin/users" onClick={() => setMenuOpen(false)}>Usuarios</Link></li>
                     <li><Link className="dropdown-item" to="/admin/audit" onClick={() => setMenuOpen(false)}>Auditoría</Link></li>
+                    <li><Link className="dropdown-item" to="/admin/records" onClick={() => setMenuOpen(false)}>Registros</Link></li>
                     <li><Link className="dropdown-item" to="/admin/settings" onClick={() => setMenuOpen(false)}>Configuración</Link></li>
                   </ul>
                 </li>
