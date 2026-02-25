@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardService, complianceService } from '../services';
+import { dashboardService, userService, catalogService } from '../services';
 import { todayISO, formatDate } from '../utils';
 
 function StatusBadge({ status }) {
@@ -12,18 +12,41 @@ function StatusBadge({ status }) {
 export default function AdminDashboardPage() {
   const [kpis, setKpis] = useState(null);
   const [commercialStatus, setCommercialStatus] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedZoneId, setSelectedZoneId] = useState('');
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { load(); }, [from, to]);
+  useEffect(() => {
+    loadFilters();
+  }, []);
+
+  useEffect(() => { load(); }, [from, to, selectedUserId, selectedZoneId]);
+
+  async function loadFilters() {
+    try {
+      const [usersRes, zonesRes] = await Promise.all([
+        userService.list(),
+        catalogService.list('zones'),
+      ]);
+      setUsers((usersRes.data.data || []).filter(u => u.role === 'sales' && u.isActive));
+      setZones(zonesRes.data.data || []);
+    } catch {}
+  }
 
   async function load() {
     setLoading(true);
     try {
+      const params = { from, to };
+      if (selectedUserId) params.userId = selectedUserId;
+      if (selectedZoneId) params.zoneId = selectedZoneId;
+
       const [kpisRes, statusRes] = await Promise.all([
-        dashboardService.kpis({ from, to }),
-        dashboardService.commercialStatus({ date: to }),
+        dashboardService.kpis(params),
+        dashboardService.commercialStatus({ date: to, userId: selectedUserId || undefined, zoneId: selectedZoneId || undefined }),
       ]);
       setKpis(kpisRes.data.data);
       setCommercialStatus(statusRes.data.data);
@@ -39,14 +62,33 @@ export default function AdminDashboardPage() {
           Ver registros
         </Link>
       </div>
-      <div className="row g-2 mb-3">
-        <div className="col-auto">
+      <div className="row g-2 mb-3 align-items-end">
+        <div className="col-6 col-md-auto">
           <label className="form-label mb-0 small">Desde</label>
           <input type="date" className="form-control form-control-sm" value={from} onChange={e => setFrom(e.target.value)} />
         </div>
-        <div className="col-auto">
+        <div className="col-6 col-md-auto">
           <label className="form-label mb-0 small">Hasta</label>
           <input type="date" className="form-control form-control-sm" value={to} onChange={e => setTo(e.target.value)} />
+        </div>
+        <div className="col-12 col-md-4">
+          <label className="form-label mb-0 small">Comercial</label>
+          <select className="form-select form-select-sm" value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}>
+            <option value="">Todos</option>
+            {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+          </select>
+        </div>
+        <div className="col-12 col-md-3">
+          <label className="form-label mb-0 small">Zona</label>
+          <select className="form-select form-select-sm" value={selectedZoneId} onChange={e => setSelectedZoneId(e.target.value)}>
+            <option value="">Todas</option>
+            {zones.map(z => <option key={z._id} value={z._id}>{z.name}</option>)}
+          </select>
+        </div>
+        <div className="col-12 col-md-auto">
+          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedUserId(''); setSelectedZoneId(''); setFrom(todayISO()); setTo(todayISO()); }}>
+            Limpiar
+          </button>
         </div>
       </div>
 

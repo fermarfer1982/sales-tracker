@@ -60,6 +60,11 @@ export default function AdminRecordsPage() {
 
   const pages = Math.ceil(total / limit) || 1;
 
+  function mapsUrl(lat, lng) {
+    if (lat == null || lng == null) return null;
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+
   return (
     <div>
       <h4 className="fw-bold mb-3">Revisión de registros</h4>
@@ -172,11 +177,35 @@ export default function AdminRecordsPage() {
 
                   <h6 className="fw-bold">Check-in</h6>
                   <p className="mb-1"><strong>Fecha/hora:</strong> {formatDateTime(selectedActivity.checkIn?.at)}</p>
-                  <p className="mb-3"><strong>Geo:</strong> lat {selectedActivity.checkIn?.geo?.lat ?? '-'}, lng {selectedActivity.checkIn?.geo?.lng ?? '-'}, accuracy {selectedActivity.checkIn?.geo?.accuracy ?? '-'} m</p>
+                  <p className="mb-1"><strong>Geo:</strong> lat {selectedActivity.checkIn?.geo?.lat ?? '-'}, lng {selectedActivity.checkIn?.geo?.lng ?? '-'}, accuracy {selectedActivity.checkIn?.geo?.accuracy ?? '-'} m</p>
+                  {mapsUrl(selectedActivity.checkIn?.geo?.lat, selectedActivity.checkIn?.geo?.lng) && (
+                    <p className="mb-3">
+                      <a
+                        href={mapsUrl(selectedActivity.checkIn?.geo?.lat, selectedActivity.checkIn?.geo?.lng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-sm btn-outline-primary"
+                      >
+                        Ver ubicación check-in (GPS)
+                      </a>
+                    </p>
+                  )}
 
                   <h6 className="fw-bold">Check-out</h6>
                   <p className="mb-1"><strong>Fecha/hora:</strong> {formatDateTime(selectedActivity.checkOut?.at)}</p>
                   <p className="mb-1"><strong>Geo:</strong> lat {selectedActivity.checkOut?.geo?.lat ?? '-'}, lng {selectedActivity.checkOut?.geo?.lng ?? '-'}, accuracy {selectedActivity.checkOut?.geo?.accuracy ?? '-'} m</p>
+                  {mapsUrl(selectedActivity.checkOut?.geo?.lat, selectedActivity.checkOut?.geo?.lng) && (
+                    <p className="mb-1">
+                      <a
+                        href={mapsUrl(selectedActivity.checkOut?.geo?.lat, selectedActivity.checkOut?.geo?.lng)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-sm btn-outline-primary"
+                      >
+                        Ver ubicación check-out (GPS)
+                      </a>
+                    </p>
+                  )}
                   <p className="mb-0"><strong>Geofence:</strong> distancia {selectedActivity.checkOut?.distanceToClientMeters != null ? `${Math.round(selectedActivity.checkOut.distanceToClientMeters)} m` : '-'} · dentro de zona {selectedActivity.checkOut?.withinExpectedArea == null ? '-' : (selectedActivity.checkOut.withinExpectedArea ? 'Sí' : 'No')}</p>
                 </div>
               )}
