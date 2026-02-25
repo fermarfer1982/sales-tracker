@@ -24,7 +24,9 @@ export default function AdminDashboardPage() {
     loadFilters();
   }, []);
 
-  useEffect(() => { load(); }, [from, to, selectedUserId, selectedZoneId]);
+  useEffect(() => {
+    load();
+  }, [from, to, selectedUserId, selectedZoneId]);
 
   async function loadFilters() {
     try {
@@ -34,7 +36,10 @@ export default function AdminDashboardPage() {
       ]);
       setUsers((usersRes.data.data || []).filter(u => u.role === 'sales' && u.isActive));
       setZones(zonesRes.data.data || []);
-    } catch {}
+    } catch {
+      setUsers([]);
+      setZones([]);
+    }
   }
 
   async function load() {
@@ -48,10 +53,28 @@ export default function AdminDashboardPage() {
         dashboardService.kpis(params),
         dashboardService.commercialStatus({ date: to, userId: selectedUserId || undefined, zoneId: selectedZoneId || undefined }),
       ]);
+      const statusData = statusRes.data.data || [];
       setKpis(kpisRes.data.data);
-      setCommercialStatus(statusRes.data.data);
+      setCommercialStatus(statusData);
+
+      if (users.length === 0 && statusData.length > 0) {
+        const fallbackUsers = statusData.map(s => ({
+          _id: s.user?._id,
+          name: s.user?.name,
+          role: 'sales',
+          isActive: true,
+        })).filter(u => u._id && u.name);
+        setUsers(fallbackUsers);
+      }
     } catch {}
     setLoading(false);
+  }
+
+  function resetFilters() {
+    setSelectedUserId('');
+    setSelectedZoneId('');
+    setFrom(todayISO());
+    setTo(todayISO());
   }
 
   return (
@@ -62,33 +85,38 @@ export default function AdminDashboardPage() {
           Ver registros
         </Link>
       </div>
-      <div className="row g-2 mb-3 align-items-end">
-        <div className="col-6 col-md-auto">
-          <label className="form-label mb-0 small">Desde</label>
-          <input type="date" className="form-control form-control-sm" value={from} onChange={e => setFrom(e.target.value)} />
-        </div>
-        <div className="col-6 col-md-auto">
-          <label className="form-label mb-0 small">Hasta</label>
-          <input type="date" className="form-control form-control-sm" value={to} onChange={e => setTo(e.target.value)} />
-        </div>
-        <div className="col-12 col-md-4">
-          <label className="form-label mb-0 small">Comercial</label>
-          <select className="form-select form-select-sm" value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}>
-            <option value="">Todos</option>
-            {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-          </select>
-        </div>
-        <div className="col-12 col-md-3">
-          <label className="form-label mb-0 small">Zona</label>
-          <select className="form-select form-select-sm" value={selectedZoneId} onChange={e => setSelectedZoneId(e.target.value)}>
-            <option value="">Todas</option>
-            {zones.map(z => <option key={z._id} value={z._id}>{z.name}</option>)}
-          </select>
-        </div>
-        <div className="col-12 col-md-auto">
-          <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedUserId(''); setSelectedZoneId(''); setFrom(todayISO()); setTo(todayISO()); }}>
-            Limpiar
-          </button>
+
+      <div className="card mb-3">
+        <div className="card-body py-3">
+          <div className="row g-2 align-items-end">
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Desde</label>
+              <input type="date" className="form-control form-control-sm" value={from} onChange={e => setFrom(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Hasta</label>
+              <input type="date" className="form-control form-control-sm" value={to} onChange={e => setTo(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Comercial</label>
+              <select className="form-select form-select-sm" value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}>
+                <option value="">Todos</option>
+                {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+              </select>
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Zona</label>
+              <select className="form-select form-select-sm" value={selectedZoneId} onChange={e => setSelectedZoneId(e.target.value)}>
+                <option value="">Todas</option>
+                {zones.map(z => <option key={z._id} value={z._id}>{z.name}</option>)}
+              </select>
+            </div>
+            <div className="col-12 d-flex justify-content-end">
+              <button className="btn btn-sm btn-outline-secondary" onClick={resetFilters}>
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
