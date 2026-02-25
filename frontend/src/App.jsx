@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -15,11 +16,13 @@ import AdminCatalogsPage from './pages/AdminCatalogsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AuditPage from './pages/AuditPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminRecordsPage from './pages/AdminRecordsPage';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
@@ -38,12 +41,14 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/audit" element={<AuditPage />} />
                 <Route path="/admin/settings" element={<SettingsPage />} />
+                <Route path="/admin/records" element={<AdminRecordsPage />} />
               </Route>
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

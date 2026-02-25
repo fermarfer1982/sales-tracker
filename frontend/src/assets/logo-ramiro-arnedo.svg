@@ -1,0 +1,41 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Logo Ramiro Arnedo Semillas</title>
+  <desc id="desc">Círculo verde con flor amarilla y texto Ramiro Arnedo semillas.</desc>
+  <defs>
+    <radialGradient id="bgGrad" cx="70%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#6fda3f"/>
+      <stop offset="55%" stop-color="#15953d"/>
+      <stop offset="100%" stop-color="#016a2d"/>
+    </radialGradient>
+    <radialGradient id="shineGrad" cx="65%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#81e957" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#81e957" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="petalShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0d5e29" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#ededed"/>
+  <circle cx="512" cy="512" r="420" fill="url(#bgGrad)"/>
+  <ellipse cx="530" cy="420" rx="260" ry="200" fill="url(#shineGrad)"/>
+
+  <g transform="translate(512 350)" filter="url(#petalShadow)">
+    <ellipse rx="42" ry="145" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(30)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(60)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(90)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(120)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(150)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(180)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(210)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(240)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(270)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(300)" fill="#f9e526"/>
+    <ellipse rx="42" ry="145" transform="rotate(330)" fill="#f9e526"/>
+    <circle r="18" fill="#07803b"/>
+  </g>
+
+  <text x="512" y="650" text-anchor="middle" fill="#f4f4f4" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="84">Ramiro Arnedo</text>
+  <text x="512" y="748" text-anchor="middle" fill="#f4f4f4" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="82">semillas</text>
+</svg>

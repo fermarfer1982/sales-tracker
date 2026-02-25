@@ -24,6 +24,13 @@ export default function ClientsPage() {
 
   const pages = Math.ceil(total / limit);
 
+  const groupedClients = clients.reduce((acc, client) => {
+    const zoneName = client.zoneId?.name || 'Sin zona';
+    if (!acc[zoneName]) acc[zoneName] = [];
+    acc[zoneName].push(client);
+    return acc;
+  }, {});
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -43,32 +50,37 @@ export default function ClientsPage() {
         <div className="text-center py-4"><div className="spinner-border text-primary" /></div>
       ) : (
         <>
-          <div className="table-responsive">
-            <table className="table table-hover table-sm align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>Razón social</th><th>CIF/NIF</th><th>Ciudad</th><th>Provincia</th>
-                  <th>Zona</th><th>Segmento</th><th>GPS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.length === 0 && (
-                  <tr><td colSpan={7} className="text-center text-muted py-3">No hay clientes</td></tr>
-                )}
-                {clients.map(c => (
-                  <tr key={c._id}>
-                    <td><Link to={`/clients/${c._id}`} className="text-decoration-none fw-semibold">{c.legalName}</Link></td>
-                    <td><code>{c.taxId}</code></td>
-                    <td>{c.city}</td>
-                    <td>{c.province}</td>
-                    <td>{c.zoneId?.name || '-'}</td>
-                    <td>{c.segmentId?.name || '-'}</td>
-                    <td>{c.geo ? <span className="text-success">✓</span> : <span className="text-muted">-</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {clients.length === 0 ? (
+            <div className="text-center text-muted py-3">No hay clientes</div>
+          ) : (
+            Object.entries(groupedClients).map(([zoneName, zoneClients]) => (
+              <div key={zoneName} className="mb-4">
+                <h6 className="fw-bold mb-2">Zona: {zoneName}</h6>
+                <div className="table-responsive">
+                  <table className="table table-hover table-sm align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Razón social</th><th>CIF/NIF</th><th>Ciudad</th><th>Provincia</th>
+                        <th>Segmento</th><th>GPS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {zoneClients.map(c => (
+                        <tr key={c._id}>
+                          <td><Link to={`/clients/${c._id}`} className="text-decoration-none fw-semibold">{c.legalName}</Link></td>
+                          <td><code>{c.taxId}</code></td>
+                          <td>{c.city}</td>
+                          <td>{c.province}</td>
+                          <td>{c.segmentId?.name || '-'}</td>
+                          <td>{c.geo ? <span className="text-success">✓</span> : <span className="text-muted">-</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
           <div className="d-flex justify-content-between align-items-center mt-2">
             <small className="text-muted">{total} cliente(s)</small>
             <div className="d-flex gap-1">

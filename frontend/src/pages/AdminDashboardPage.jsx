@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { dashboardService, complianceService } from '../services';
+import { Link } from 'react-router-dom';
+import { dashboardService, userService, catalogService } from '../services';
 import { todayISO, formatDate } from '../utils';
 
 function StatusBadge({ status }) {
@@ -11,36 +12,111 @@ function StatusBadge({ status }) {
 export default function AdminDashboardPage() {
   const [kpis, setKpis] = useState(null);
   const [commercialStatus, setCommercialStatus] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedZoneId, setSelectedZoneId] = useState('');
   const [from, setFrom] = useState(todayISO());
   const [to, setTo] = useState(todayISO());
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { load(); }, [from, to]);
+  useEffect(() => {
+    loadFilters();
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [from, to, selectedUserId, selectedZoneId]);
+
+  async function loadFilters() {
+    try {
+      const [usersRes, zonesRes] = await Promise.all([
+        userService.list(),
+        catalogService.list('zones'),
+      ]);
+      setUsers((usersRes.data.data || []).filter(u => u.role === 'sales' && u.isActive));
+      setZones(zonesRes.data.data || []);
+    } catch {
+      setUsers([]);
+      setZones([]);
+    }
+  }
 
   async function load() {
     setLoading(true);
     try {
+      const params = { from, to };
+      if (selectedUserId) params.userId = selectedUserId;
+      if (selectedZoneId) params.zoneId = selectedZoneId;
+
       const [kpisRes, statusRes] = await Promise.all([
-        dashboardService.kpis({ from, to }),
-        dashboardService.commercialStatus({ date: to }),
+        dashboardService.kpis(params),
+        dashboardService.commercialStatus({ date: to, userId: selectedUserId || undefined, zoneId: selectedZoneId || undefined }),
       ]);
+      const statusData = statusRes.data.data || [];
       setKpis(kpisRes.data.data);
-      setCommercialStatus(statusRes.data.data);
+      setCommercialStatus(statusData);
+
+      if (users.length === 0 && statusData.length > 0) {
+        const fallbackUsers = statusData.map(s => ({
+          _id: s.user?._id,
+          name: s.user?.name,
+          role: 'sales',
+          isActive: true,
+        })).filter(u => u._id && u.name);
+        setUsers(fallbackUsers);
+      }
     } catch {}
     setLoading(false);
   }
 
+  function resetFilters() {
+    setSelectedUserId('');
+    setSelectedZoneId('');
+    setFrom(todayISO());
+    setTo(todayISO());
+  }
+
   return (
     <div>
-      <h4 className="fw-bold mb-3">Dashboard de cumplimiento</h4>
-      <div className="row g-2 mb-3">
-        <div className="col-auto">
-          <label className="form-label mb-0 small">Desde</label>
-          <input type="date" className="form-control form-control-sm" value={from} onChange={e => setFrom(e.target.value)} />
-        </div>
-        <div className="col-auto">
-          <label className="form-label mb-0 small">Hasta</label>
-          <input type="date" className="form-control form-control-sm" value={to} onChange={e => setTo(e.target.value)} />
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h4 className="fw-bold mb-0">Dashboard de cumplimiento</h4>
+        <Link to="/admin/records" className="btn btn-outline-primary btn-sm">
+          Ver registros
+        </Link>
+      </div>
+
+      <div className="card mb-3">
+        <div className="card-body py-3">
+          <div className="row g-2 align-items-end">
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Desde</label>
+              <input type="date" className="form-control form-control-sm" value={from} onChange={e => setFrom(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Hasta</label>
+              <input type="date" className="form-control form-control-sm" value={to} onChange={e => setTo(e.target.value)} />
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Comercial</label>
+              <select className="form-select form-select-sm" value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}>
+                <option value="">Todos</option>
+                {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+              </select>
+            </div>
+            <div className="col-12 col-md-3">
+              <label className="form-label mb-1 small">Zona</label>
+              <select className="form-select form-select-sm" value={selectedZoneId} onChange={e => setSelectedZoneId(e.target.value)}>
+                <option value="">Todas</option>
+                {zones.map(z => <option key={z._id} value={z._id}>{z.name}</option>)}
+              </select>
+            </div>
+            <div className="col-12 d-flex justify-content-end">
+              <button className="btn btn-sm btn-outline-secondary" onClick={resetFilters}>
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
