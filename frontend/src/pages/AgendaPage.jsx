@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { activityService, catalogService, userService } from '../services';
+import { activityService, catalogService } from '../services';
 import { todayISO, formatDate } from '../utils';
 import ClientAutocomplete from '../components/ClientAutocomplete';
 import { useAuth } from '../context/AuthContext';
@@ -34,8 +34,8 @@ export default function AgendaPage() {
     catalogService.list('activity-types').then(res => setActivityTypes(res.data.data || [])).catch(() => setActivityTypes([]));
 
     if (user?.role === 'admin' || user?.role === 'manager') {
-      userService.list()
-        .then(res => setSalesUsers((res.data.data || []).filter(u => u.role === 'sales' && u.isActive)))
+      activityService.agendaUsers()
+        .then(res => setSalesUsers(res.data.data || []))
         .catch(() => setSalesUsers([]));
     }
   }, [user?.role]);

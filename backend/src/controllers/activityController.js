@@ -2,6 +2,7 @@
 
 const Activity = require('../models/Activity');
 const Client = require('../models/Client');
+const User = require('../models/User');
 const AppSetting = require('../models/AppSetting');
 const { haversineDistance } = require('../utils/haversine');
 const { apiResponse, apiError } = require('../utils/response');
@@ -222,6 +223,132 @@ async function myAgenda(req, res) {
   }
 }
 
+async function agendaUsers(req, res) {
+  try {
+    let users = [];
+    if (req.user.role === 'admin') {
+      users = await User.find({ role: 'sales', isActive: true, deletedAt: null }).select('name email role').sort({ name: 1 });
+    } else if (req.user.role === 'manager') {
+      users = await User.find({ role: 'sales', isActive: true, deletedAt: null, managerUserId: req.user._id }).select('name email role').sort({ name: 1 });
+    }
+    return apiResponse(res, 200, users);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function calendar(req, res) {
+  try {
+    const { from, to, userId } = req.query;
+    const fromDate = startOfDay(from || new Date());
+    const toDate = endOfDay(to || fromDate);
+
+    const filter = {
+      deletedAt: null,
+      status: 'draft',
+      activityDate: { $gte: fromDate, $lte: toDate },
+    };
+
+    if (req.user.role === 'sales') {
+      filter.userId = req.user._id;
+    } else if (req.user.role === 'manager') {
+      const teamMembers = await User.find({ managerUserId: req.user._id, role: 'sales', isActive: true, deletedAt: null }).select('_id');
+      const ids = teamMembers.map((u) => String(u._id));
+      if (userId && ids.includes(String(userId))) filter.userId = userId;
+      else filter.userId = { $in: teamMembers.map((u) => u._id) };
+    } else if (userId) {
+      filter.userId = userId;
+    }
+
+    const visits = await Activity.find(filter)
+      .sort({ activityDate: 1, createdAt: 1 })
+      .populate('userId', 'name email role')
+      .populate('clientId', 'legalName taxId city')
+      .populate('activityTypeId', 'name');
+
+    const now = new Date();
+    const upcoming = visits
+      .filter((visit) => new Date(visit.activityDate) >= now)
+      .slice(0, 5)
+      .map((visit) => ({
+        activityId: visit._id,
+        date: visit.activityDate,
+        title: `${visit.clientId?.legalName || 'Cliente'} · ${visit.activityTypeId?.name || 'Visita'}${visit.userId?.name ? ` (${visit.userId.name})` : ''}`,
+      }));
+
+    return apiResponse(res, 200, { visits, alerts: upcoming });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function schedule(req, res) {
+  try {
+    const { clientId, activityTypeId, activityDate, notes } = req.body;
+    const zoneValidation = await validateSalesClientZone(req.user, clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
+    const activity = await Activity.create({
+      userId: req.user._id,
+      clientId,
+      activityTypeId,
+      activityDate: new Date(activityDate),
+      notes: notes || null,
+      isDraft: true,
+      status: 'draft',
+    });
+    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE_CREATE', userId: req.user._id, after: activity.toObject() });
+    return apiResponse(res, 201, activity);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function updateSchedule(req, res) {
+  try {
+    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null, status: 'draft' });
+    if (!activity) return apiError(res, 404, 'Registro de agenda no encontrado');
+
+    if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) {
+      return apiError(res, 403, 'No autorizado');
+    }
+    if (req.user.role === 'manager') {
+      const allowed = await User.findOne({ _id: activity.userId, managerUserId: req.user._id, role: 'sales', isActive: true, deletedAt: null });
+      if (!allowed) return apiError(res, 403, 'No autorizado');
+    }
+
+    const zoneValidation = await validateSalesClientZone(req.user, req.body.clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
+    const before = activity.toObject();
+    activity.clientId = req.body.clientId;
+    activity.activityTypeId = req.body.activityTypeId;
+    activity.activityDate = new Date(req.body.activityDate);
+    activity.notes = req.body.notes || null;
+    await activity.save();
+    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE_UPDATE', userId: req.user._id, before, after: activity.toObject() });
+    return apiResponse(res, 200, activity);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function deleteSchedule(req, res) {
+  try {
+    if (req.user.role !== 'admin') return apiError(res, 403, 'Solo administradores pueden borrar agenda');
+    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null, status: 'draft' });
+    if (!activity) return apiError(res, 404, 'Registro de agenda no encontrado');
+
+    const before = activity.toObject();
+    activity.deletedAt = new Date();
+    await activity.save();
+    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE_DELETE', userId: req.user._id, before });
+    return apiResponse(res, 200, { message: 'Registro de agenda eliminado' });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
 async function teamActivities(req, res) {
   try {
     const { from, to, userId, page = 1, limit = 50 } = req.query;
@@ -305,4 +432,19 @@ async function deleteActivity(req, res) {
   }
 }
 
-module.exports = { checkIn, checkOut, quickCreate, myActivities, myAgenda, teamActivities, getActivity, updateActivity, deleteActivity };
+module.exports = {
+  checkIn,
+  checkOut,
+  quickCreate,
+  myActivities,
+  myAgenda,
+  agendaUsers,
+  calendar,
+  schedule,
+  updateSchedule,
+  deleteSchedule,
+  teamActivities,
+  getActivity,
+  updateActivity,
+  deleteActivity,
+};

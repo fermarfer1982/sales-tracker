@@ -21,6 +21,12 @@ export const activityService = {
   quick: (data) => api.post('/activities/quick', data),
   myActivities: (params) => api.get('/activities/my', { params }),
   myAgenda: (params) => api.get('/activities/agenda', { params }),
+
+  calendar: (params) => api.get('/activities/calendar', { params }),
+  schedule: (data) => api.post('/activities/schedule', data),
+  updateSchedule: (id, data) => api.put(`/activities/schedule/${id}`, data),
+  deleteSchedule: (id) => api.delete(`/activities/schedule/${id}`),
+  agendaUsers: () => api.get('/activities/agenda/users'),
   teamActivities: (params) => api.get('/activities/team', { params }),
   get: (id) => api.get(`/activities/${id}`),
   update: (id, data) => api.put(`/activities/${id}`, data),
