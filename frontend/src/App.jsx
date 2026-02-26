@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
@@ -8,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import ActivitiesTodayPage from './pages/ActivitiesTodayPage';
 import QuickRegisterPage from './pages/QuickRegisterPage';
 import MyActivitiesPage from './pages/MyActivitiesPage';
+import AgendaPage from './pages/AgendaPage';
 import ClientsPage from './pages/ClientsPage';
 import ClientCreatePage from './pages/ClientCreatePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -15,11 +17,13 @@ import AdminCatalogsPage from './pages/AdminCatalogsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AuditPage from './pages/AuditPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminRecordsPage from './pages/AdminRecordsPage';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
@@ -28,6 +32,7 @@ export default function App() {
               <Route path="/activities/today" element={<ActivitiesTodayPage />} />
               <Route path="/activities/quick" element={<QuickRegisterPage />} />
               <Route path="/activities/my" element={<MyActivitiesPage />} />
+              <Route path="/agenda" element={<AgendaPage />} />
               <Route path="/clients" element={<ClientsPage />} />
               <Route path="/clients/new" element={<ClientCreatePage />} />
               <Route element={<ProtectedRoute roles={['manager', 'admin']} />}>
@@ -38,12 +43,14 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/audit" element={<AuditPage />} />
                 <Route path="/admin/settings" element={<SettingsPage />} />
+                <Route path="/admin/records" element={<AdminRecordsPage />} />
               </Route>
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

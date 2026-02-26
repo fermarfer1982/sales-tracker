@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { clientService, catalogService } from '../services';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { GeoStatus } from '../components/GeoStatus';
+import { useAuth } from '../context/AuthContext';
 
 export default function ClientCreatePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [zones, setZones] = useState([]);
   const [segments, setSegments] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -28,8 +30,16 @@ export default function ClientCreatePage() {
 
   useEffect(() => {
     Promise.all([catalogService.list('zones'), catalogService.list('segments')])
-      .then(([z, s]) => { setZones(z.data.data); setSegments(s.data.data); });
-  }, []);
+      .then(([z, s]) => {
+        const zoneList = z.data.data || [];
+        const filteredZones = user?.role === 'sales' && user?.zoneId
+          ? zoneList.filter(zone => zone._id === user.zoneId)
+          : zoneList;
+        setZones(filteredZones);
+        setSegments(s.data.data);
+        if (user?.role === 'sales' && user?.zoneId) setZoneId(user.zoneId);
+      });
+  }, [user?.role, user?.zoneId]);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
@@ -99,7 +109,7 @@ export default function ClientCreatePage() {
               <div className="row g-2 mb-3">
                 <div className="col-6">
                   <label className="form-label fw-semibold">Zona *</label>
-                  <select className="form-select" value={zoneId} onChange={e => setZoneId(e.target.value)} required>
+                  <select className="form-select" value={zoneId} onChange={e => setZoneId(e.target.value)} required disabled={user?.role === 'sales'}>
                     <option value="">Selecciona...</option>
                     {zones.map(z => <option key={z._id} value={z._id}>{z.name}</option>)}
                   </select>

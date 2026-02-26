@@ -6,6 +6,7 @@ const AppSetting = require('../models/AppSetting');
 const { haversineDistance } = require('../utils/haversine');
 const { apiResponse, apiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
+const { hasZoneAccessToClient, hasSalesZone, isSales } = require('../utils/zoneAccess');
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -23,9 +24,29 @@ async function getGeofenceRadius() {
   return setting ? Number(setting.value) : 300;
 }
 
+function toDateOnly(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+
+async function validateSalesClientZone(user, clientId) {
+  if (!isSales(user)) return null;
+  if (!hasSalesZone(user)) return { ok: false, code: 422, message: 'Tu usuario comercial no tiene zona asignada' };
+  const client = await Client.findOne({ _id: clientId, deletedAt: null }).select('zoneId');
+  if (!client) return { ok: false, code: 404, message: 'Cliente no encontrado' };
+  if (!hasZoneAccessToClient(user, client)) {
+    return { ok: false, code: 403, message: 'No autorizado para registrar actividad en clientes fuera de tu zona' };
+  }
+  return { ok: true, client };
+}
+
 async function checkIn(req, res) {
   try {
     const { clientId, activityTypeId, activityDate, geo } = req.body;
+    const zoneValidation = await validateSalesClientZone(req.user, clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
     const activity = await Activity.create({
       userId: req.user._id,
       clientId,
@@ -95,6 +116,9 @@ async function quickCreate(req, res) {
   try {
     const { clientId, activityTypeId, productId, outcomeId, activityDate, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
 
+    const zoneValidation = await validateSalesClientZone(req.user, clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
     const client = await Client.findById(clientId);
     let distanceToClientMeters = null;
     let withinExpectedArea = null;
@@ -127,6 +151,98 @@ async function quickCreate(req, res) {
     });
     await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'CREATE', userId: req.user._id, after: activity.toObject() });
     return apiResponse(res, 201, activity);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+
+async function scheduleCreate(req, res) {
+  try {
+    const { clientId, activityTypeId, activityDate, notes, nextActionDate, nextActionNotes } = req.body;
+    const zoneValidation = await validateSalesClientZone(req.user, clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
+    const scheduledDate = toDateOnly(activityDate);
+    if (scheduledDate < toDateOnly(new Date())) {
+      return apiError(res, 422, 'Solo se pueden agendar visitas para hoy o fechas futuras');
+    }
+
+    const activity = await Activity.create({
+      userId: req.user._id,
+      clientId,
+      activityTypeId,
+      activityDate: scheduledDate,
+      status: 'draft',
+      notes: notes || null,
+      nextActionDate: nextActionDate || null,
+      nextActionNotes: nextActionNotes || null,
+      isDraft: true,
+    });
+
+    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE', userId: req.user._id, after: activity.toObject() });
+    return apiResponse(res, 201, activity);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function calendar(req, res) {
+  try {
+    const { from, to, userId } = req.query;
+    const start = from ? startOfDay(from) : startOfDay(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    const end = to ? endOfDay(to) : endOfDay(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0));
+
+    let userIds = [];
+    if (req.user.role === 'sales') {
+      userIds = [req.user._id];
+    } else if (req.user.role === 'manager') {
+      const User = require('../models/User');
+      const teamMembers = await User.find({ managerUserId: req.user._id, isActive: true }).select('_id');
+      const ids = teamMembers.map(u => String(u._id));
+      if (userId && ids.includes(String(userId))) userIds = [userId];
+      else userIds = teamMembers.map(u => u._id);
+    } else {
+      if (userId) userIds = [userId];
+      else {
+        const User = require('../models/User');
+        const allUsers = await User.find({ isActive: true, role: 'sales' }).select('_id');
+        userIds = allUsers.map(u => u._id);
+      }
+    }
+
+    const [visits, nextActions, overdueNextActions] = await Promise.all([
+      Activity.find({ userId: { $in: userIds }, activityDate: { $gte: start, $lte: end }, deletedAt: null })
+        .sort({ activityDate: 1 })
+        .populate('userId', 'name email')
+        .populate('clientId', 'legalName city zoneId')
+        .populate('activityTypeId', 'name'),
+      Activity.find({ userId: { $in: userIds }, nextActionDate: { $gte: start, $lte: end }, deletedAt: null })
+        .sort({ nextActionDate: 1 })
+        .populate('userId', 'name email')
+        .populate('clientId', 'legalName city zoneId'),
+      Activity.find({ userId: { $in: userIds }, nextActionDate: { $lt: startOfDay(new Date()) }, deletedAt: null, status: { $ne: 'completed' } })
+        .sort({ nextActionDate: 1 })
+        .populate('userId', 'name email')
+        .populate('clientId', 'legalName city zoneId'),
+    ]);
+
+    const alerts = [
+      ...overdueNextActions.map(a => ({
+        type: 'overdue_next_action',
+        activityId: a._id,
+        title: `Acción vencida: ${a.clientId?.legalName || 'Cliente'}`,
+        date: a.nextActionDate,
+      })),
+      ...visits.filter(v => toDateOnly(v.activityDate).getTime() === toDateOnly(new Date()).getTime()).map(v => ({
+        type: 'visit_today',
+        activityId: v._id,
+        title: `Visita agendada para hoy: ${v.clientId?.legalName || 'Cliente'}`,
+        date: v.activityDate,
+      })),
+    ];
+
+    return apiResponse(res, 200, { visits, nextActions, alerts });
   } catch (err) {
     return apiError(res, 500, err.message);
   }
@@ -193,6 +309,9 @@ async function getActivity(req, res) {
     if (req.user.role === 'sales' && String(activity.userId._id) !== String(req.user._id)) {
       return apiError(res, 403, 'No autorizado');
     }
+    if (isSales(req.user) && !hasZoneAccessToClient(req.user, activity.clientId)) {
+      return apiError(res, 403, 'No autorizado para ver actividades de clientes fuera de tu zona');
+    }
     return apiResponse(res, 200, activity);
   } catch (err) {
     return apiError(res, 500, err.message);
@@ -233,4 +352,4 @@ async function deleteActivity(req, res) {
   }
 }
 
-module.exports = { checkIn, checkOut, quickCreate, myActivities, teamActivities, getActivity, updateActivity, deleteActivity };
+module.exports = { checkIn, checkOut, quickCreate, scheduleCreate, calendar, myActivities, teamActivities, getActivity, updateActivity, deleteActivity };

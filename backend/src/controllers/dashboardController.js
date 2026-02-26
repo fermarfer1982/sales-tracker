@@ -18,12 +18,14 @@ function endOfDay(date) {
 
 async function getKpis(req, res) {
   try {
-    const { from, to } = req.query;
+    const { from, to, userId, zoneId } = req.query;
     const start = from ? startOfDay(from) : startOfDay(new Date());
     const end = to ? endOfDay(to) : endOfDay(new Date());
 
-    let userFilter = { isActive: true };
+    let userFilter = { isActive: true, role: 'sales' };
     if (req.user.role === 'manager') userFilter.managerUserId = req.user._id;
+    if (zoneId) userFilter.zoneId = zoneId;
+    if (userId) userFilter._id = userId;
 
     const users = await User.find(userFilter).select('_id name');
     const userIds = users.map(u => u._id);
@@ -51,12 +53,14 @@ async function getKpis(req, res) {
 
 async function getMissing(req, res) {
   try {
-    const { date } = req.query;
+    const { date, userId, zoneId } = req.query;
     const day = date ? startOfDay(date) : startOfDay(new Date());
     const endDay = endOfDay(date || new Date());
 
     let userFilter = { isActive: true, role: 'sales' };
     if (req.user.role === 'manager') userFilter.managerUserId = req.user._id;
+    if (zoneId) userFilter.zoneId = zoneId;
+    if (userId) userFilter._id = userId;
 
     const users = await User.find(userFilter).select('_id name email');
     const activities = await Activity.find({
@@ -77,12 +81,14 @@ async function getMissing(req, res) {
 
 async function getCommercialStatus(req, res) {
   try {
-    const { date } = req.query;
+    const { date, userId, zoneId } = req.query;
     const day = date ? startOfDay(date) : startOfDay(new Date());
     const endDay = endOfDay(date || new Date());
 
     let userFilter = { isActive: true, role: 'sales' };
     if (req.user.role === 'manager') userFilter.managerUserId = req.user._id;
+    if (zoneId) userFilter.zoneId = zoneId;
+    if (userId) userFilter._id = userId;
 
     const users = await User.find(userFilter).select('_id name email');
     const activities = await Activity.find({

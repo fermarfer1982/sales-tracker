@@ -4,6 +4,7 @@ const Client = require('../models/Client');
 const { validateSpanishTaxId, normalizeTaxId } = require('../utils/taxId');
 const { apiResponse, apiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
+const { applyClientZoneFilterForUser, hasZoneAccessToClient, hasSalesZone, isSales } = require('../utils/zoneAccess');
 
 async function createClient(req, res) {
   try {
@@ -14,6 +15,10 @@ async function createClient(req, res) {
     }
     const existing = await Client.findOne({ taxId: data.taxId, deletedAt: null });
     if (existing) return apiError(res, 409, `Ya existe un cliente con el CIF/NIF ${data.taxId}`);
+    if (isSales(req.user)) {
+      if (!hasSalesZone(req.user)) return apiError(res, 422, 'Tu usuario comercial no tiene zona asignada');
+      data.zoneId = req.user.zoneId;
+    }
     const client = await Client.create({ ...data, createdBy: req.user._id });
     await audit({ entityName: 'Client', entityId: String(client._id), action: 'CREATE', userId: req.user._id, after: client.toObject() });
     return apiResponse(res, 201, client);
@@ -27,7 +32,7 @@ async function listClients(req, res) {
   try {
     const { search = '', page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const filter = { deletedAt: null };
+    const filter = applyClientZoneFilterForUser(req.user, { deletedAt: null });
     if (search) {
       filter.$or = [
         { legalName: { $regex: search, $options: 'i' } },
@@ -36,7 +41,7 @@ async function listClients(req, res) {
       ];
     }
     const [clients, total] = await Promise.all([
-      Client.find(filter).sort({ legalName: 1 }).skip(skip).limit(parseInt(limit, 10))
+      Client.find(filter).sort({ zoneId: 1, legalName: 1 }).skip(skip).limit(parseInt(limit, 10))
         .populate('zoneId', 'name').populate('segmentId', 'name').populate('createdBy', 'name email'),
       Client.countDocuments(filter),
     ]);
@@ -48,7 +53,7 @@ async function listClients(req, res) {
 
 async function getClient(req, res) {
   try {
-    const client = await Client.findOne({ _id: req.params.id, deletedAt: null })
+    const client = await Client.findOne(applyClientZoneFilterForUser(req.user, { _id: req.params.id, deletedAt: null }))
       .populate('zoneId', 'name').populate('segmentId', 'name').populate('createdBy', 'name email');
     if (!client) return apiError(res, 404, 'Cliente no encontrado');
     return apiResponse(res, 200, client);
@@ -59,10 +64,13 @@ async function getClient(req, res) {
 
 async function updateClient(req, res) {
   try {
-    const client = await Client.findOne({ _id: req.params.id, deletedAt: null });
+    const client = await Client.findOne(applyClientZoneFilterForUser(req.user, { _id: req.params.id, deletedAt: null }));
     if (!client) return apiError(res, 404, 'Cliente no encontrado');
-    if (req.user.role === 'sales' && String(client.createdBy) !== String(req.user._id)) {
-      return apiError(res, 403, 'Solo puedes editar clientes que hayas creado tú');
+    if (!hasZoneAccessToClient(req.user, client)) {
+      return apiError(res, 403, 'No autorizado para interactuar con clientes fuera de tu zona');
+    }
+    if (isSales(req.user)) {
+      req.body.zoneId = req.user.zoneId;
     }
     const before = client.toObject();
     Object.assign(client, req.body);
@@ -77,7 +85,7 @@ async function updateClient(req, res) {
 async function suggestClients(req, res) {
   try {
     const { name = '', taxId = '' } = req.query;
-    const filter = { deletedAt: null };
+    const filter = applyClientZoneFilterForUser(req.user, { deletedAt: null });
     if (!name && !taxId) return apiResponse(res, 200, []);
     const orClauses = [];
     if (name) orClauses.push({ legalName: { $regex: name, $options: 'i' } });
@@ -95,7 +103,7 @@ async function suggestClients(req, res) {
 
 async function setClientLocation(req, res) {
   try {
-    const client = await Client.findOne({ _id: req.params.id, deletedAt: null });
+    const client = await Client.findOne(applyClientZoneFilterForUser(req.user, { _id: req.params.id, deletedAt: null }));
     if (!client) return apiError(res, 404, 'Cliente no encontrado');
     const { lat, lng, accuracyMeters, capturedAt } = req.body;
     client.geo = { lat, lng, accuracyMeters: accuracyMeters || null, capturedAt: capturedAt || new Date() };

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import logoRamiro from '../assets/logo-ramiro-arnedo.svg';
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,7 +22,10 @@ export default function Layout() {
     <div>
       <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
         <div className="container-fluid">
-          <Link className="navbar-brand fw-bold" to="/">Sales Tracker</Link>
+          <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
+            <img src={logoRamiro} alt="Logo Ramiro Arnedo" width={36} height={36} style={{ borderRadius: '50%' }} />
+            <span>Sales Tracker</span>
+          </Link>
           <button className="navbar-toggler" type="button" onClick={() => setMenuOpen(!menuOpen)}>
             <span className="navbar-toggler-icon" />
           </button>
@@ -40,6 +46,11 @@ export default function Layout() {
                   <li className="nav-item">
                     <Link className={isActive('/activities/my')} to="/activities/my" onClick={() => setMenuOpen(false)}>
                       Mis actividades
+                    </Link>
+                  </li>
+                  <li className="nav-item">
+                    <Link className={isActive('/agenda')} to="/agenda" onClick={() => setMenuOpen(false)}>
+                      Agenda
                     </Link>
                   </li>
                   <li className="nav-item">
@@ -65,12 +76,23 @@ export default function Layout() {
                     <li><Link className="dropdown-item" to="/admin/catalogs" onClick={() => setMenuOpen(false)}>Catálogos</Link></li>
                     <li><Link className="dropdown-item" to="/admin/users" onClick={() => setMenuOpen(false)}>Usuarios</Link></li>
                     <li><Link className="dropdown-item" to="/admin/audit" onClick={() => setMenuOpen(false)}>Auditoría</Link></li>
+                    <li><Link className="dropdown-item" to="/admin/records" onClick={() => setMenuOpen(false)}>Registros</Link></li>
                     <li><Link className="dropdown-item" to="/admin/settings" onClick={() => setMenuOpen(false)}>Configuración</Link></li>
                   </ul>
                 </li>
               )}
             </ul>
             <div className="d-flex align-items-center gap-2">
+              <select
+                className="form-select form-select-sm"
+                value={theme}
+                onChange={e => setTheme(e.target.value)}
+                aria-label="Selector de tema"
+                style={{ width: 130 }}
+              >
+                <option value="light">☀️ Claro</option>
+                <option value="dark">🌙 Oscuro</option>
+              </select>
               <span className="text-white-50 small d-none d-lg-inline">
                 {user?.name} ({user?.role})
               </span>
