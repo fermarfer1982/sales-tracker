@@ -2,7 +2,6 @@
 
 const Activity = require('../models/Activity');
 const Client = require('../models/Client');
-const User = require('../models/User');
 const AppSetting = require('../models/AppSetting');
 const { haversineDistance } = require('../utils/haversine');
 const { apiResponse, apiError } = require('../utils/response');
@@ -19,16 +18,12 @@ function endOfDay(date) {
   d.setHours(23, 59, 59, 999);
   return d;
 }
-function toDateOnly(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 async function getGeofenceRadius() {
   const setting = await AppSetting.findOne({ key: 'geofenceRadiusMeters' });
   return setting ? Number(setting.value) : 300;
 }
+
 
 async function validateSalesClientZone(user, clientId) {
   if (!isSales(user)) return null;
@@ -39,15 +34,6 @@ async function validateSalesClientZone(user, clientId) {
     return { ok: false, code: 403, message: 'No autorizado para registrar actividad en clientes fuera de tu zona' };
   }
   return { ok: true, client };
-}
-
-async function canManageScheduledActivity(user, activity) {
-  if (user.role === 'admin') return true;
-  if (user.role === 'manager') {
-    const member = await User.findOne({ _id: activity.userId, managerUserId: user._id }).select('_id');
-    return Boolean(member);
-  }
-  return String(activity.userId) === String(user._id);
 }
 
 async function checkIn(req, res) {
@@ -81,7 +67,6 @@ async function checkOut(req, res) {
     if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
       return apiError(res, 403, 'No autorizado');
     }
-
     const { productId, outcomeId, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
 
     let computedDuration = durationMinutes;
@@ -124,6 +109,7 @@ async function checkOut(req, res) {
 async function quickCreate(req, res) {
   try {
     const { clientId, activityTypeId, productId, outcomeId, activityDate, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
+
     const zoneValidation = await validateSalesClientZone(req.user, clientId);
     if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
 
@@ -164,134 +150,6 @@ async function quickCreate(req, res) {
   }
 }
 
-async function scheduleCreate(req, res) {
-  try {
-    const { clientId, activityTypeId, activityDate, notes } = req.body;
-    const zoneValidation = await validateSalesClientZone(req.user, clientId);
-    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
-
-    const scheduledDate = toDateOnly(activityDate);
-    if (scheduledDate < toDateOnly(new Date())) return apiError(res, 422, 'Solo se pueden agendar visitas para hoy o fechas futuras');
-
-    const activity = await Activity.create({
-      userId: req.user._id,
-      clientId,
-      activityTypeId,
-      activityDate: scheduledDate,
-      status: 'draft',
-      notes: notes || null,
-      isDraft: true,
-    });
-
-    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE', userId: req.user._id, after: activity.toObject() });
-    return apiResponse(res, 201, activity);
-  } catch (err) {
-    return apiError(res, 500, err.message);
-  }
-}
-
-async function scheduleUpdate(req, res) {
-  try {
-    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
-    if (!activity) return apiError(res, 404, 'Registro agendado no encontrado');
-    if (activity.status !== 'draft') return apiError(res, 409, 'Solo se pueden editar visitas agendadas pendientes');
-
-    const allowed = await canManageScheduledActivity(req.user, activity);
-    if (!allowed) return apiError(res, 403, 'No autorizado');
-
-    const { clientId, activityTypeId, activityDate, notes } = req.body;
-    const zoneValidation = await validateSalesClientZone(req.user, clientId);
-    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
-
-    const scheduledDate = toDateOnly(activityDate);
-    if (scheduledDate < toDateOnly(new Date())) return apiError(res, 422, 'Solo se pueden agendar visitas para hoy o fechas futuras');
-
-    const before = activity.toObject();
-    activity.clientId = clientId;
-    activity.activityTypeId = activityTypeId;
-    activity.activityDate = scheduledDate;
-    activity.notes = notes || null;
-    await activity.save();
-
-    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE_UPDATE', userId: req.user._id, before, after: activity.toObject() });
-    return apiResponse(res, 200, activity);
-  } catch (err) {
-    return apiError(res, 500, err.message);
-  }
-}
-
-async function scheduleDelete(req, res) {
-  try {
-    if (req.user.role !== 'admin') return apiError(res, 403, 'Solo admin puede borrar registros agendados');
-    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
-    if (!activity) return apiError(res, 404, 'Registro agendado no encontrado');
-    const before = activity.toObject();
-    activity.deletedAt = new Date();
-    await activity.save();
-    await audit({ entityName: 'Activity', entityId: String(activity._id), action: 'SCHEDULE_DELETE', userId: req.user._id, before });
-    return apiResponse(res, 200, { message: 'Registro agendado eliminado' });
-  } catch (err) {
-    return apiError(res, 500, err.message);
-  }
-}
-
-async function calendar(req, res) {
-  try {
-    const { from, to, userId } = req.query;
-    const start = from ? startOfDay(from) : startOfDay(new Date());
-    const end = to ? endOfDay(to) : endOfDay(new Date());
-
-    let userIds = [];
-    if (req.user.role === 'sales') {
-      userIds = [req.user._id];
-    } else if (req.user.role === 'manager') {
-      const teamMembers = await User.find({ managerUserId: req.user._id, isActive: true }).select('_id');
-      const ids = teamMembers.map(u => String(u._id));
-      if (userId && ids.includes(String(userId))) userIds = [userId];
-      else userIds = teamMembers.map(u => u._id);
-    } else {
-      if (userId) userIds = [userId];
-      else {
-        const allUsers = await User.find({ isActive: true, role: 'sales' }).select('_id');
-        userIds = allUsers.map(u => u._id);
-      }
-    }
-
-    const visits = await Activity.find({ userId: { $in: userIds }, activityDate: { $gte: start, $lte: end }, deletedAt: null, status: 'draft' })
-      .sort({ activityDate: 1 })
-      .populate('userId', 'name email')
-      .populate('clientId', 'legalName city zoneId')
-      .populate('activityTypeId', 'name');
-
-    const today = toDateOnly(new Date());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const alerts = [
-      ...visits
-        .filter(v => toDateOnly(v.activityDate).getTime() === today.getTime())
-        .map(v => ({
-          type: 'visit_today',
-          activityId: v._id,
-          title: `Visita agendada para hoy: ${v.clientId?.legalName || 'Cliente'}`,
-          date: v.activityDate,
-        })),
-      ...visits
-        .filter(v => toDateOnly(v.activityDate).getTime() === tomorrow.getTime())
-        .map(v => ({
-          type: 'visit_tomorrow',
-          activityId: v._id,
-          title: `Recordatorio (mañana): ${v.clientId?.legalName || 'Cliente'}`,
-          date: v.activityDate,
-        })),
-    ];
-
-    return apiResponse(res, 200, { visits, alerts });
-  } catch (err) {
-    return apiError(res, 500, err.message);
-  }
-}
-
 async function myActivities(req, res) {
   try {
     const { from, to, page = 1, limit = 20 } = req.query;
@@ -313,11 +171,63 @@ async function myActivities(req, res) {
   }
 }
 
+
+async function myAgenda(req, res) {
+  try {
+    const date = req.query.date || new Date();
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    const todayFilter = {
+      userId: req.user._id,
+      deletedAt: null,
+      activityDate: { $gte: dayStart, $lte: dayEnd },
+    };
+
+    const [todayActivities, followUpsRaw] = await Promise.all([
+      Activity.find(todayFilter).sort({ status: 1, checkIn: -1, createdAt: -1 })
+        .populate('clientId', 'legalName taxId city')
+        .populate('activityTypeId', 'name'),
+      Activity.find({
+        userId: req.user._id,
+        deletedAt: null,
+        nextActionDate: { $gte: dayStart, $lte: dayEnd },
+        status: 'completed',
+      }).sort({ nextActionDate: 1, updatedAt: -1 })
+        .populate('clientId', 'legalName taxId city')
+        .populate('activityTypeId', 'name')
+        .populate('outcomeId', 'name')
+        .limit(20),
+    ]);
+
+    const inProgressActivity = todayActivities.find((activity) => activity.status === 'in_progress') || null;
+    const completedToday = todayActivities.filter((activity) => activity.status === 'completed').length;
+
+    const visitedTodayByClient = new Set(todayActivities.map((activity) => String(activity.clientId?._id || activity.clientId)));
+    const followUpsDueToday = followUpsRaw.filter((activity) => !visitedTodayByClient.has(String(activity.clientId?._id || activity.clientId)));
+
+    return apiResponse(res, 200, {
+      date: dayStart,
+      summary: {
+        totalToday: todayActivities.length,
+        completedToday,
+        pendingToday: todayActivities.length - completedToday,
+        followUpsDueToday: followUpsDueToday.length,
+      },
+      inProgressActivity,
+      followUpsDueToday,
+    });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
 async function teamActivities(req, res) {
   try {
     const { from, to, userId, page = 1, limit = 50 } = req.query;
     const filter = { deletedAt: null };
     if (req.user.role === 'manager') {
+      const User = require('../models/User');
       const teamMembers = await User.find({ managerUserId: req.user._id }).select('_id');
       const ids = teamMembers.map(u => u._id);
       if (userId && ids.map(String).includes(userId)) filter.userId = userId;
@@ -395,17 +305,4 @@ async function deleteActivity(req, res) {
   }
 }
 
-module.exports = {
-  checkIn,
-  checkOut,
-  quickCreate,
-  scheduleCreate,
-  scheduleUpdate,
-  scheduleDelete,
-  calendar,
-  myActivities,
-  teamActivities,
-  getActivity,
-  updateActivity,
-  deleteActivity,
-};
+module.exports = { checkIn, checkOut, quickCreate, myActivities, myAgenda, teamActivities, getActivity, updateActivity, deleteActivity };

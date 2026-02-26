@@ -6,7 +6,7 @@ import ClientAutocomplete from '../components/ClientAutocomplete';
 import { GeoStatus, GeoAlert } from '../components/GeoStatus';
 import { formatDateTime, todayISO } from '../utils';
 
-const STEPS = { IDLE: 'idle', CHECKIN_FORM: 'checkin_form', IN_PROGRESS: 'in_progress', CHECKOUT_FORM: 'checkout_form', DONE: 'done' };
+const STEPS = { IDLE: 'idle', CHECKIN_FORM: 'checkin_form', IN_PROGRESS: 'in_progress', DONE: 'done' };
 
 export default function ActivitiesTodayPage() {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export default function ActivitiesTodayPage() {
   const [outcomes, setOutcomes] = useState([]);
   const [currentActivity, setCurrentActivity] = useState(null);
   const [todayActivities, setTodayActivities] = useState([]);
+  const [agenda, setAgenda] = useState(null);
 
   const [clientId, setClientId] = useState('');
   const [activityTypeId, setActivityTypeId] = useState('');
@@ -25,13 +26,13 @@ export default function ActivitiesTodayPage() {
   const [nextActionDate, setNextActionDate] = useState('');
   const [nextActionNotes, setNextActionNotes] = useState('');
 
-  const { geo, geoStatus, capture, reset } = useGeolocation();
+  const { geoStatus, capture, reset } = useGeolocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadCatalogs();
-    loadTodayActivities();
+    loadAgendaAndToday();
   }, []);
 
   async function loadCatalogs() {
@@ -45,10 +46,34 @@ export default function ActivitiesTodayPage() {
     setOutcomes(oc.data.data);
   }
 
-  async function loadTodayActivities() {
+  async function loadAgendaAndToday() {
     const today = todayISO();
-    const res = await activityService.myActivities({ from: today, to: today });
-    setTodayActivities(res.data.data);
+    const [activitiesRes, agendaRes] = await Promise.all([
+      activityService.myActivities({ from: today, to: today, limit: 100 }),
+      activityService.myAgenda({ date: today }),
+    ]);
+    setTodayActivities(activitiesRes.data.data);
+    setAgenda(agendaRes.data.data);
+  }
+
+  function openCheckInForm(prefill = {}) {
+    setError('');
+    setClientId(prefill.clientId || '');
+    setActivityTypeId(prefill.activityTypeId || '');
+    setStep(STEPS.CHECKIN_FORM);
+  }
+
+  function startFromFollowUp(activity) {
+    openCheckInForm({
+      clientId: activity?.clientId?._id || '',
+      activityTypeId: activity?.activityTypeId?._id || '',
+    });
+  }
+
+  function resumeInProgress(activity) {
+    setError('');
+    setCurrentActivity(activity);
+    setStep(STEPS.IN_PROGRESS);
   }
 
   async function handleStartVisit() {
@@ -66,6 +91,7 @@ export default function ActivitiesTodayPage() {
       });
       setCurrentActivity(res.data.data);
       setStep(STEPS.IN_PROGRESS);
+      await loadAgendaAndToday();
     } catch (err) {
       if (err.message === 'denied' || err.message === 'unavailable' || err.message === 'timeout') {
         setError('');
@@ -86,15 +112,24 @@ export default function ActivitiesTodayPage() {
     try {
       const capturedGeo = await capture();
       await activityService.checkOut(currentActivity._id, {
-        productId, outcomeId, notes, nextActionDate: nextActionDate || null, nextActionNotes: nextActionNotes || null,
+        productId,
+        outcomeId,
+        notes,
+        nextActionDate: nextActionDate || null,
+        nextActionNotes: nextActionNotes || null,
         geo: capturedGeo,
       });
       setStep(STEPS.DONE);
-      await loadTodayActivities();
+      await loadAgendaAndToday();
       setTimeout(() => {
         setStep(STEPS.IDLE);
-        setClientId(''); setActivityTypeId(''); setProductId(''); setOutcomeId(''); setNotes('');
-        setNextActionDate(''); setNextActionNotes('');
+        setClientId('');
+        setActivityTypeId('');
+        setProductId('');
+        setOutcomeId('');
+        setNotes('');
+        setNextActionDate('');
+        setNextActionNotes('');
         setCurrentActivity(null);
         reset();
       }, 2000);
@@ -111,8 +146,8 @@ export default function ActivitiesTodayPage() {
 
   return (
     <div className="row justify-content-center">
-      <div className="col-12 col-md-8 col-lg-6">
-        <h4 className="fw-bold mb-3">Actividades de hoy</h4>
+      <div className="col-12 col-xl-10">
+        <h4 className="fw-bold mb-3">Agenda comercial de hoy</h4>
 
         {step === STEPS.DONE && (
           <div className="alert alert-success text-center">
@@ -122,18 +157,65 @@ export default function ActivitiesTodayPage() {
 
         {step === STEPS.IDLE && (
           <>
-            <div className="card mb-3 card-action" onClick={() => setStep(STEPS.CHECKIN_FORM)}>
-              <div className="card-body text-center py-4">
-                <div style={{ fontSize: 48 }}>📍</div>
-                <h5 className="mt-2 fw-bold">Iniciar visita</h5>
-                <p className="text-muted mb-0">Registra el inicio de una visita a cliente</p>
-              </div>
-            </div>
-            <div className="card card-action" onClick={() => navigate('/activities/quick')}>
-              <div className="card-body text-center py-4">
-                <div style={{ fontSize: 48 }}>⚡</div>
-                <h5 className="mt-2 fw-bold">Registro rápido</h5>
-                <p className="text-muted mb-0">Llamadas, emails y actividades sin check-in/out</p>
+            <div className="card mb-3 border-primary-subtle">
+              <div className="card-body">
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                  <h5 className="mb-0">Agenda inteligente</h5>
+                  <div className="d-flex gap-2">
+                    <span className="badge text-bg-light">Hoy: {agenda?.summary?.totalToday || 0}</span>
+                    <span className="badge text-bg-success">Completadas: {agenda?.summary?.completedToday || 0}</span>
+                    <span className="badge text-bg-warning">Pendientes: {agenda?.summary?.pendingToday || 0}</span>
+                  </div>
+                </div>
+
+                {agenda?.inProgressActivity ? (
+                  <div className="alert alert-warning d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                      <div className="fw-semibold">Tienes una visita en curso</div>
+                      <div className="small text-muted">
+                        {agenda.inProgressActivity.clientId?.legalName} · Iniciada {formatDateTime(agenda.inProgressActivity.checkIn?.at)}
+                      </div>
+                    </div>
+                    <button className="btn btn-sm btn-dark" onClick={() => resumeInProgress(agenda.inProgressActivity)}>
+                      Reanudar
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-muted mb-3">No hay visitas en curso. Puedes empezar por pendientes de seguimiento o crear una nueva visita.</p>
+                )}
+
+                <div className="mb-3">
+                  <h6 className="fw-semibold">Seguimientos previstos para hoy</h6>
+                  {agenda?.followUpsDueToday?.length ? (
+                    <div className="list-group">
+                      {agenda.followUpsDueToday.slice(0, 5).map((item) => (
+                        <div key={item._id} className="list-group-item d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <div className="fw-semibold">{item.clientId?.legalName}</div>
+                            <div className="small text-muted">
+                              {item.activityTypeId?.name || 'Actividad'} · Programado {formatDateTime(item.nextActionDate)}
+                            </div>
+                            {item.nextActionNotes && <div className="small mt-1">{item.nextActionNotes}</div>}
+                          </div>
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => startFromFollowUp(item)}>
+                            Iniciar visita
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted mb-0">No tienes seguimientos pendientes para hoy.</p>
+                  )}
+                </div>
+
+                <div className="d-flex gap-2 flex-wrap">
+                  <button className="btn btn-primary" onClick={() => openCheckInForm()}>
+                    📍 Nueva visita
+                  </button>
+                  <button className="btn btn-outline-secondary" onClick={() => navigate('/activities/quick')}>
+                    ⚡ Registro rápido
+                  </button>
+                </div>
               </div>
             </div>
           </>
@@ -157,7 +239,7 @@ export default function ActivitiesTodayPage() {
                 </select>
               </div>
               <div className="d-flex gap-2 mt-3">
-                <button className="btn btn-outline-secondary flex-fill" onClick={() => setStep(STEPS.IDLE)}>Cancelar</button>
+                <button className="btn btn-outline-secondary flex-fill" onClick={() => setStep(STEPS.IDLE)}>Volver</button>
                 <button className="btn btn-primary flex-fill btn-lg-mobile" onClick={handleStartVisit} disabled={loading || geoStatus === 'loading'}>
                   {loading ? <span className="spinner-border spinner-border-sm me-2" /> : '📍 '}
                   Iniciar visita
@@ -218,8 +300,8 @@ export default function ActivitiesTodayPage() {
 
         {todayActivities.length > 0 && step === STEPS.IDLE && (
           <div className="mt-4">
-            <h6 className="fw-bold">Actividades registradas hoy</h6>
-            {todayActivities.map(a => (
+            <h6 className="fw-bold">Actividad registrada hoy</h6>
+            {todayActivities.slice(0, 8).map(a => (
               <div key={a._id} className="card mb-2">
                 <div className="card-body py-2">
                   <div className="d-flex justify-content-between align-items-center">
