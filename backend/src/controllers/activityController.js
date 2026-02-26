@@ -262,14 +262,27 @@ async function calendar(req, res) {
       .populate('activityTypeId', 'name');
 
     const today = toDateOnly(new Date());
-    const alerts = visits
-      .filter(v => toDateOnly(v.activityDate).getTime() === today.getTime())
-      .map(v => ({
-        type: 'visit_today',
-        activityId: v._id,
-        title: `Visita agendada para hoy: ${v.clientId?.legalName || 'Cliente'}`,
-        date: v.activityDate,
-      }));
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const alerts = [
+      ...visits
+        .filter(v => toDateOnly(v.activityDate).getTime() === today.getTime())
+        .map(v => ({
+          type: 'visit_today',
+          activityId: v._id,
+          title: `Visita agendada para hoy: ${v.clientId?.legalName || 'Cliente'}`,
+          date: v.activityDate,
+        })),
+      ...visits
+        .filter(v => toDateOnly(v.activityDate).getTime() === tomorrow.getTime())
+        .map(v => ({
+          type: 'visit_tomorrow',
+          activityId: v._id,
+          title: `Recordatorio (mañana): ${v.clientId?.legalName || 'Cliente'}`,
+          date: v.activityDate,
+        })),
+    ];
 
     return apiResponse(res, 200, { visits, alerts });
   } catch (err) {
