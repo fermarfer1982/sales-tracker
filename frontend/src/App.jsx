@@ -33,6 +33,7 @@ export default function App() {
               <Route path="/activities/quick" element={<QuickRegisterPage />} />
               <Route path="/activities/my" element={<MyActivitiesPage />} />
               <Route path="/activities/agenda" element={<AgendaPage />} />
+              <Route path="/agenda" element={<Navigate to="/activities/agenda" replace />} />
               <Route path="/clients" element={<ClientsPage />} />
               <Route path="/clients/new" element={<ClientCreatePage />} />
               <Route element={<ProtectedRoute roles={['manager', 'admin']} />}>

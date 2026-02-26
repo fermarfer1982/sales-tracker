@@ -65,7 +65,9 @@ export default function AgendaPage() {
     setSaving(true);
     setError('');
     try {
-      await activityService.schedule({ clientId, activityTypeId, activityDate, notes: notes || null });
+      const payload = { clientId, activityTypeId, activityDate, notes: notes || null };
+      if ((user?.role === 'admin' || user?.role === 'manager') && selectedUserId) payload.userId = selectedUserId;
+      await activityService.schedule(payload);
       setClientId('');
       setActivityTypeId('');
       setActivityDate(todayISO());
@@ -238,7 +240,7 @@ export default function AgendaPage() {
                               <div className="small text-muted">{v.userId?.name || ''}</div>
                               <div className="d-flex gap-2 mt-1">
                                 <button className="btn btn-sm btn-outline-primary" onClick={() => openEdit(v)}>Editar</button>
-                                {user?.role === 'admin' && (
+                                {(user?.role === 'admin' || user?.role === 'manager') && (
                                   <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteSchedule(v._id)}>
                                     Borrar
                                   </button>

@@ -44,6 +44,7 @@ const scheduleCreate = Joi.object({
   clientId: Joi.string().required(),
   activityTypeId: Joi.string().required(),
   activityDate: Joi.date().required(),
+  userId: Joi.string().optional(),
   notes: Joi.string().allow(null, '').default(null),
 });
 

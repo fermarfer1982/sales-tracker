@@ -37,6 +37,25 @@ async function validateSalesClientZone(user, clientId) {
   return { ok: true, client };
 }
 
+async function resolveManagedUserId(requester, requestedUserId) {
+  if (!requestedUserId) return requester._id;
+  if (requester.role === 'admin') return requestedUserId;
+  if (requester.role !== 'manager') return requester._id;
+
+  const teamMember = await User.findOne({ _id: requestedUserId, managerUserId: requester._id, isActive: true }).select('_id');
+  if (!teamMember) return null;
+  return teamMember._id;
+}
+
+async function canManageScheduledActivity(requester, activity) {
+  if (requester.role === 'admin') return true;
+  if (requester.role === 'manager') {
+    const teamMember = await User.findOne({ _id: activity.userId, managerUserId: requester._id, isActive: true }).select('_id');
+    return Boolean(teamMember);
+  }
+  return String(activity.userId) === String(requester._id);
+}
+
 async function checkIn(req, res) {
   try {
     const { clientId, activityTypeId, activityDate, geo } = req.body;
@@ -230,13 +249,15 @@ async function calendar(req, res) {
 
 async function scheduleVisit(req, res) {
   try {
-    const { clientId, activityTypeId, activityDate, notes } = req.body;
+    const { clientId, activityTypeId, activityDate, notes, userId } = req.body;
+    const ownerUserId = await resolveManagedUserId(req.user, userId);
+    if (!ownerUserId) return apiError(res, 403, 'Solo puedes agendar visitas para comerciales de tu equipo');
 
     const zoneValidation = await validateSalesClientZone(req.user, clientId);
     if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
 
     const scheduled = await Activity.create({
-      userId: req.user._id,
+      userId: ownerUserId,
       clientId,
       activityTypeId,
       activityDate: new Date(activityDate),
@@ -264,9 +285,8 @@ async function updateSchedule(req, res) {
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (activity.status !== 'draft') return apiError(res, 409, 'Solo se pueden editar actividades agendadas en borrador');
-    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
-      return apiError(res, 403, 'No autorizado');
-    }
+    const canManage = await canManageScheduledActivity(req.user, activity);
+    if (!canManage) return apiError(res, 403, 'No autorizado');
 
     const zoneValidation = await validateSalesClientZone(req.user, req.body.clientId);
     if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
@@ -298,9 +318,8 @@ async function deleteSchedule(req, res) {
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (activity.status !== 'draft') return apiError(res, 409, 'Solo se pueden eliminar actividades agendadas en borrador');
-    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
-      return apiError(res, 403, 'No autorizado');
-    }
+    const canManage = await canManageScheduledActivity(req.user, activity);
+    if (!canManage) return apiError(res, 403, 'No autorizado');
 
     const before = activity.toObject();
     activity.deletedAt = new Date();
