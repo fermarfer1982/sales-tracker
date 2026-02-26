@@ -78,7 +78,9 @@ async function checkOut(req, res) {
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (activity.status === 'completed') return apiError(res, 409, 'La actividad ya está completada');
-    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') return apiError(res, 403, 'No autorizado');
+    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
+      return apiError(res, 403, 'No autorizado');
+    }
 
     const { productId, outcomeId, notes, durationMinutes, nextActionDate, nextActionNotes, geo } = req.body;
 
@@ -347,7 +349,9 @@ async function getActivity(req, res) {
       .populate('clientId', 'legalName taxId city province').populate('userId', 'name email')
       .populate('activityTypeId', 'name').populate('productId', 'name').populate('outcomeId', 'name');
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
-    if (req.user.role === 'sales' && String(activity.userId._id) !== String(req.user._id)) return apiError(res, 403, 'No autorizado');
+    if (req.user.role === 'sales' && String(activity.userId._id) !== String(req.user._id)) {
+      return apiError(res, 403, 'No autorizado');
+    }
     if (isSales(req.user) && !hasZoneAccessToClient(req.user, activity.clientId)) {
       return apiError(res, 403, 'No autorizado para ver actividades de clientes fuera de tu zona');
     }
@@ -361,7 +365,9 @@ async function updateActivity(req, res) {
   try {
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
-    if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) return apiError(res, 403, 'No autorizado');
+    if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) {
+      return apiError(res, 403, 'No autorizado');
+    }
     const before = activity.toObject();
     Object.assign(activity, req.body);
     await activity.save();
@@ -376,7 +382,9 @@ async function deleteActivity(req, res) {
   try {
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
-    if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) return apiError(res, 403, 'No autorizado');
+    if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) {
+      return apiError(res, 403, 'No autorizado');
+    }
     const before = activity.toObject();
     activity.deletedAt = new Date();
     await activity.save();
