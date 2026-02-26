@@ -1,10 +1,10 @@
 # Revisión funcional de Sales Tracker
 
-Fecha: 2026-02-24
+Fecha: 2026-02-26
 
 ## Verificaciones ejecutadas
 
-- Backend tests unitarios/integración ligera (`npm test`): **17/17 tests OK**.
+- Backend tests unitarios/integración ligera (`npm test`): **22/22 tests OK**.
 - Frontend build de producción (`npm run build`): **build OK**.
 
 ## Qué hace la aplicación
