@@ -1,5 +1,6 @@
 'use strict';
 
+const mongoose = require('mongoose');
 const Activity = require('../models/Activity');
 const Client = require('../models/Client');
 const AppSetting = require('../models/AppSetting');
@@ -17,6 +18,11 @@ function endOfDay(date) {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
   return d;
+}
+
+
+function isValidObjectId(value) {
+  return mongoose.Types.ObjectId.isValid(String(value));
 }
 
 async function getGeofenceRadius() {
@@ -61,6 +67,7 @@ async function checkIn(req, res) {
 
 async function checkOut(req, res) {
   try {
+    if (!isValidObjectId(req.params.id)) return apiError(res, 400, 'Id de actividad no válido');
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (activity.status === 'completed') return apiError(res, 409, 'La actividad ya está completada');
@@ -256,6 +263,7 @@ async function teamActivities(req, res) {
 
 async function getActivity(req, res) {
   try {
+    if (!isValidObjectId(req.params.id)) return apiError(res, 400, 'Id de actividad no válido');
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null })
       .populate('clientId', 'legalName taxId city province').populate('userId', 'name email')
       .populate('activityTypeId', 'name').populate('productId', 'name').populate('outcomeId', 'name');
@@ -274,6 +282,7 @@ async function getActivity(req, res) {
 
 async function updateActivity(req, res) {
   try {
+    if (!isValidObjectId(req.params.id)) return apiError(res, 400, 'Id de actividad no válido');
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) {
@@ -291,6 +300,7 @@ async function updateActivity(req, res) {
 
 async function deleteActivity(req, res) {
   try {
+    if (!isValidObjectId(req.params.id)) return apiError(res, 400, 'Id de actividad no válido');
     const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
     if (!activity) return apiError(res, 404, 'Actividad no encontrada');
     if (req.user.role === 'sales' && String(activity.userId) !== String(req.user._id)) {
