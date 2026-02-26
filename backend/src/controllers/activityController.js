@@ -7,6 +7,7 @@ const { haversineDistance } = require('../utils/haversine');
 const { apiResponse, apiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
 const { hasZoneAccessToClient, hasSalesZone, isSales } = require('../utils/zoneAccess');
+const User = require('../models/User');
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -171,6 +172,154 @@ async function myActivities(req, res) {
   }
 }
 
+async function calendar(req, res) {
+  try {
+    const { from, to, userId } = req.query;
+    const rangeStart = startOfDay(from || new Date());
+    const rangeEnd = endOfDay(to || from || new Date());
+
+    const filter = {
+      deletedAt: null,
+      activityDate: { $gte: rangeStart, $lte: rangeEnd },
+    };
+
+    if (req.user.role === 'sales') {
+      filter.userId = req.user._id;
+    } else if (req.user.role === 'manager') {
+      const teamMembers = await User.find({ managerUserId: req.user._id, isActive: true }).select('_id');
+      const teamIds = teamMembers.map((member) => String(member._id));
+      if (userId && teamIds.includes(String(userId))) {
+        filter.userId = userId;
+      } else {
+        filter.userId = { $in: teamIds };
+      }
+    } else if (userId) {
+      filter.userId = userId;
+    }
+
+    const [visits, alerts] = await Promise.all([
+      Activity.find(filter)
+        .sort({ activityDate: 1, createdAt: 1 })
+        .populate('userId', 'name email')
+        .populate('clientId', 'legalName taxId city')
+        .populate('activityTypeId', 'name')
+        .populate('outcomeId', 'name'),
+      Activity.find({
+        ...filter,
+        status: { $ne: 'completed' },
+      })
+        .sort({ activityDate: 1 })
+        .select('_id activityDate status nextActionDate userId clientId'),
+    ]);
+
+    const mappedAlerts = alerts.map((alert) => ({
+      _id: alert._id,
+      kind: alert.status === 'in_progress' ? 'in_progress' : 'scheduled',
+      activityDate: alert.activityDate,
+      nextActionDate: alert.nextActionDate || null,
+      userId: alert.userId,
+      clientId: alert.clientId,
+      status: alert.status,
+    }));
+
+    return apiResponse(res, 200, { visits, alerts: mappedAlerts });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function scheduleVisit(req, res) {
+  try {
+    const { clientId, activityTypeId, activityDate, notes } = req.body;
+
+    const zoneValidation = await validateSalesClientZone(req.user, clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
+    const scheduled = await Activity.create({
+      userId: req.user._id,
+      clientId,
+      activityTypeId,
+      activityDate: new Date(activityDate),
+      notes: notes || null,
+      status: 'draft',
+      isDraft: true,
+    });
+
+    await audit({
+      entityName: 'Activity',
+      entityId: String(scheduled._id),
+      action: 'SCHEDULE_CREATE',
+      userId: req.user._id,
+      after: scheduled.toObject(),
+    });
+
+    return apiResponse(res, 201, scheduled);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function updateSchedule(req, res) {
+  try {
+    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
+    if (!activity) return apiError(res, 404, 'Actividad no encontrada');
+    if (activity.status !== 'draft') return apiError(res, 409, 'Solo se pueden editar actividades agendadas en borrador');
+    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
+      return apiError(res, 403, 'No autorizado');
+    }
+
+    const zoneValidation = await validateSalesClientZone(req.user, req.body.clientId);
+    if (zoneValidation && !zoneValidation.ok) return apiError(res, zoneValidation.code, zoneValidation.message);
+
+    const before = activity.toObject();
+    activity.clientId = req.body.clientId;
+    activity.activityTypeId = req.body.activityTypeId;
+    activity.activityDate = new Date(req.body.activityDate);
+    activity.notes = req.body.notes || null;
+    await activity.save();
+
+    await audit({
+      entityName: 'Activity',
+      entityId: String(activity._id),
+      action: 'SCHEDULE_UPDATE',
+      userId: req.user._id,
+      before,
+      after: activity.toObject(),
+    });
+
+    return apiResponse(res, 200, activity);
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
+async function deleteSchedule(req, res) {
+  try {
+    const activity = await Activity.findOne({ _id: req.params.id, deletedAt: null });
+    if (!activity) return apiError(res, 404, 'Actividad no encontrada');
+    if (activity.status !== 'draft') return apiError(res, 409, 'Solo se pueden eliminar actividades agendadas en borrador');
+    if (String(activity.userId) !== String(req.user._id) && req.user.role === 'sales') {
+      return apiError(res, 403, 'No autorizado');
+    }
+
+    const before = activity.toObject();
+    activity.deletedAt = new Date();
+    await activity.save();
+
+    await audit({
+      entityName: 'Activity',
+      entityId: String(activity._id),
+      action: 'SCHEDULE_DELETE',
+      userId: req.user._id,
+      before,
+    });
+
+    return apiResponse(res, 200, { message: 'Visita agendada eliminada' });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
 
 async function myAgenda(req, res) {
   try {
@@ -305,4 +454,18 @@ async function deleteActivity(req, res) {
   }
 }
 
-module.exports = { checkIn, checkOut, quickCreate, myActivities, myAgenda, teamActivities, getActivity, updateActivity, deleteActivity };
+module.exports = {
+  checkIn,
+  checkOut,
+  quickCreate,
+  myActivities,
+  myAgenda,
+  calendar,
+  scheduleVisit,
+  updateSchedule,
+  deleteSchedule,
+  teamActivities,
+  getActivity,
+  updateActivity,
+  deleteActivity,
+};

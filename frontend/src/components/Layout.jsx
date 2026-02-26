@@ -49,6 +49,11 @@ export default function Layout() {
                     </Link>
                   </li>
                   <li className="nav-item">
+                    <Link className={isActive('/activities/agenda')} to="/activities/agenda" onClick={() => setMenuOpen(false)}>
+                      Agenda
+                    </Link>
+                  </li>
+                  <li className="nav-item">
                     <Link className={isActive('/clients')} to="/clients" onClick={() => setMenuOpen(false)}>
                       Clientes
                     </Link>
