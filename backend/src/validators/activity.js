@@ -40,14 +40,18 @@ const quickCreate = Joi.object({
   geo: geoSchema.required(),
 });
 
-
 const scheduleCreate = Joi.object({
   clientId: Joi.string().required(),
   activityTypeId: Joi.string().required(),
   activityDate: Joi.date().required(),
   notes: Joi.string().allow(null, '').default(null),
-  nextActionDate: Joi.date().allow(null).default(null),
-  nextActionNotes: Joi.string().allow(null, '').default(null),
+});
+
+const scheduleUpdate = Joi.object({
+  clientId: Joi.string().required(),
+  activityTypeId: Joi.string().required(),
+  activityDate: Joi.date().required(),
+  notes: Joi.string().allow(null, '').default(null),
 });
 
 const updateActivity = Joi.object({
@@ -59,4 +63,4 @@ const updateActivity = Joi.object({
   outcomeId: Joi.string(),
 });
 
-module.exports = { checkIn, checkOut, quickCreate, scheduleCreate, updateActivity };
+module.exports = { checkIn, checkOut, quickCreate, scheduleCreate, scheduleUpdate, updateActivity };
