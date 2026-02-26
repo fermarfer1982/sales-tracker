@@ -171,6 +171,58 @@ async function myActivities(req, res) {
   }
 }
 
+
+async function myAgenda(req, res) {
+  try {
+    const date = req.query.date || new Date();
+    const dayStart = startOfDay(date);
+    const dayEnd = endOfDay(date);
+
+    const todayFilter = {
+      userId: req.user._id,
+      deletedAt: null,
+      activityDate: { $gte: dayStart, $lte: dayEnd },
+    };
+
+    const [todayActivities, followUpsRaw] = await Promise.all([
+      Activity.find(todayFilter)
+        .sort({ createdAt: -1 })
+        .populate('clientId', 'legalName taxId city')
+        .populate('activityTypeId', 'name'),
+      Activity.find({
+        userId: req.user._id,
+        deletedAt: null,
+        nextActionDate: { $gte: dayStart, $lte: dayEnd },
+        status: 'completed',
+      })
+        .sort({ nextActionDate: 1, updatedAt: -1 })
+        .populate('clientId', 'legalName taxId city')
+        .populate('activityTypeId', 'name')
+        .populate('outcomeId', 'name')
+        .limit(20),
+    ]);
+
+    const inProgressActivity = todayActivities.find((activity) => activity.status === 'in_progress') || null;
+    const completedToday = todayActivities.filter((activity) => activity.status === 'completed').length;
+    const visitedTodayByClient = new Set(todayActivities.map((activity) => String(activity.clientId?._id || activity.clientId)));
+    const followUpsDueToday = followUpsRaw.filter((activity) => !visitedTodayByClient.has(String(activity.clientId?._id || activity.clientId)));
+
+    return apiResponse(res, 200, {
+      date: dayStart,
+      summary: {
+        totalToday: todayActivities.length,
+        completedToday,
+        pendingToday: todayActivities.length - completedToday,
+        followUpsDueToday: followUpsDueToday.length,
+      },
+      inProgressActivity,
+      followUpsDueToday,
+    });
+  } catch (err) {
+    return apiError(res, 500, err.message);
+  }
+}
+
 async function teamActivities(req, res) {
   try {
     const { from, to, userId, page = 1, limit = 50 } = req.query;
@@ -254,4 +306,4 @@ async function deleteActivity(req, res) {
   }
 }
 
-module.exports = { checkIn, checkOut, quickCreate, myActivities, teamActivities, getActivity, updateActivity, deleteActivity };
+module.exports = { checkIn, checkOut, quickCreate, myActivities, myAgenda, teamActivities, getActivity, updateActivity, deleteActivity };

@@ -11,6 +11,7 @@ router.use(authenticate);
 router.post('/checkin', validate(checkIn), ctrl.checkIn);
 router.post('/quick', validate(quickCreate), ctrl.quickCreate);
 router.get('/my', ctrl.myActivities);
+router.get('/agenda', ctrl.myAgenda);
 router.get('/team', authorize('manager', 'admin'), ctrl.teamActivities);
 router.get('/:id', ctrl.getActivity);
 router.post('/:id/checkout', validate(checkOut), ctrl.checkOut);

@@ -20,6 +20,7 @@ export const activityService = {
   checkOut: (id, data) => api.post(`/activities/${id}/checkout`, data),
   quick: (data) => api.post('/activities/quick', data),
   myActivities: (params) => api.get('/activities/my', { params }),
+  myAgenda: (params) => api.get('/activities/agenda', { params }),
   teamActivities: (params) => api.get('/activities/team', { params }),
   get: (id) => api.get(`/activities/${id}`),
   update: (id, data) => api.put(`/activities/${id}`, data),
