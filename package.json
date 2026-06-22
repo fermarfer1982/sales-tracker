@@ -1,0 +1,7 @@
+{
+  "name": "sales-tracker",
+  "private": true,
+  "scripts": {
+    "test": "npm test --prefix backend && npm run build --prefix frontend && bash -lc 'cd frontend && if [ -f .env.e2e ]; then set -a; source .env.e2e; set +a; fi; npm run test:e2e && npm run test:e2e:agenda'"
+  }
+}

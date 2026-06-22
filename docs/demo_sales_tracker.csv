@@ -1,0 +1,22 @@
+fecha_actividad,comercial,zona,manager,cliente,cif_nif,provincia,ciudad,segmento,tipo_actividad,producto,resultado,estado,duracion_minutos,proxima_accion,distancia_cliente_metros,geofence_ok,cliente_nuevo,checkin_lat,checkin_lng,checkout_lat,checkout_lng
+2026-04-01,Ana López,Almería Poniente,Javier Martín,Semilleros Costa Sur,B12345674,Almería,El Ejido,Semillero,visita,Pimiento California,seguimiento,completed,52,2026-04-08,42,si,no,36.7741,-2.8142,36.7740,-2.8140
+2026-04-01,Carlos Ruiz,Níjar,Javier Martín,Finca Sol Verde,A23456781,Almería,Níjar,Productor,llamada,Tomate rama,sin_contacto,completed,18,2026-04-03,,,"no",,,
+2026-04-02,Marta Pérez,Levante,Javier Martín,Agro Levante Sur,B34567896,Almería,Huércal-Overa,Distribuidor,email,Pepino Almería,seguimiento,completed,12,2026-04-05,,,"no",,,
+2026-04-02,Ana López,Almería Poniente,Javier Martín,Viveros del Poniente,C45678903,Almería,Roquetas de Mar,Vivero,visita,Calabacín,pedido,completed,61,2026-04-10,35,si,si,36.7630,-2.6140,36.7633,-2.6138
+2026-04-03,Carlos Ruiz,Níjar,Javier Martín,Hortalizas Cabo Gata,D56789010,Almería,Níjar,Productor,visita,Sandía,oferta,completed,47,2026-04-09,58,si,no,36.8920,-2.1060,36.8923,-2.1064
+2026-04-03,Marta Pérez,Levante,Javier Martín,Distribuciones Almanzora,E67890127,Almería,Albox,Distribuidor,llamada,Melón,seguimiento,completed,15,2026-04-07,,,"no",,,
+2026-04-04,Ana López,Almería Poniente,Javier Martín,Coop. Campo Sur,F78901234,Almería,La Mojonera,Cooperativa,visita,Pimiento California,pedido,completed,55,2026-04-11,29,si,no,36.7871,-2.6810,36.7872,-2.6807
+2026-04-04,Carlos Ruiz,Níjar,Javier Martín,Frescos del Cabo,G89012349,Almería,San Isidro,Distribuidor,email,Tomate rama,seguimiento,completed,9,2026-04-06,,,"no",,,
+2026-04-05,Marta Pérez,Levante,Javier Martín,Semillas Sierra H1234567J,Almería,Huércal-Overa,Semillero,visita,Berenjena,seguimiento,completed,43,2026-04-14,64,no,no,37.3900,-1.9450,37.3908,-1.9458
+2026-04-05,Ana López,Almería Poniente,Javier Martín,Agroindal Sur,J2345678I,Almería,El Ejido,Productor,llamada,Calabacín,seguimiento,completed,14,2026-04-06,,,"no",,,
+2026-04-06,Carlos Ruiz,Níjar,Javier Martín,Invernaderos La Marina,K3456789H,Almería,Campohermoso,Productor,visita,Sandía,pedido,completed,49,2026-04-13,31,si,no,36.9352,-2.0664,36.9351,-2.0660
+2026-04-06,Marta Pérez,Levante,Javier Martín,Agroservicios Almanzora,L4567890G,Almería,Olula del Río,Distribuidor,llamada,Pepino Almería,sin_contacto,completed,16,2026-04-08,,,"no",,,
+2026-04-07,Ana López,Almería Poniente,Javier Martín,Semilleros Costa Sur,B12345674,Almería,El Ejido,Semillero,email,Pimiento California,seguimiento,completed,11,2026-04-15,,,"no",,,
+2026-04-07,Carlos Ruiz,Níjar,Javier Martín,Finca Sol Verde,A23456781,Almería,Níjar,Productor,visita,Tomate rama,oferta,completed,44,2026-04-12,46,si,no,36.9011,-2.1214,36.9012,-2.1216
+2026-04-08,Marta Pérez,Levante,Javier Martín,Distribuciones Almanzora,E67890127,Almería,Albox,Distribuidor,visita,Melón,seguimiento,completed,39,2026-04-18,53,si,no,37.3880,-2.1460,37.3882,-2.1458
+2026-04-08,Ana López,Almería Poniente,Javier Martín,Nuevos Cultivos Poniente,M5678901F,Almería,Vícar,Productor,visita,Calabacín,pedido,completed,57,2026-04-16,27,si,si,36.8304,-2.6420,36.8305,-2.6418
+2026-04-09,Carlos Ruiz,Níjar,Javier Martín,Hortalizas Cabo Gata,D56789010,Almería,Níjar,Productor,llamada,Sandía,seguimiento,completed,13,2026-04-17,,,"no",,,
+2026-04-09,Marta Pérez,Levante,Javier Martín,Semillas Sierra H1234567J,Almería,Huércal-Overa,Semillero,email,Berenjena,seguimiento,completed,10,2026-04-13,,,"no",,,
+2026-04-10,Ana López,Almería Poniente,Javier Martín,Viveros del Poniente,C45678903,Almería,Roquetas de Mar,Vivero,visita,Calabacín,pedido,completed,63,2026-04-24,22,si,no,36.7641,-2.6114,36.7640,-2.6112
+2026-04-10,Carlos Ruiz,Níjar,Javier Martín,Invernaderos La Marina,K3456789H,Almería,Campohermoso,Productor,visita,Tomate rama,seguimiento,completed,41,2026-04-22,38,si,no,36.9348,-2.0660,36.9347,-2.0658
+2026-04-11,Marta Pérez,Levante,Javier Martín,Agro Levante Sur,B34567896,Almería,Huércal-Overa,Distribuidor,visita,Pepino Almería,oferta,completed,36,2026-04-21,48,si,no,37.4010,-1.9450,37.4011,-1.9448

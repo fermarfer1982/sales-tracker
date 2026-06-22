@@ -1,0 +1,27 @@
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+const { authenticate, authorize } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
+const { checkIn, checkOut, quickCreate, scheduleCreate, scheduleUpdate, updateActivity: updateActivitySchema } = require('../validators/activity');
+const ctrl = require('../controllers/activityController');
+
+router.use(authenticate);
+router.post('/checkin', validate(checkIn), ctrl.checkIn);
+router.post('/quick', validate(quickCreate), ctrl.quickCreate);
+router.get('/my', ctrl.myActivities);
+router.get('/agenda', ctrl.myAgenda);
+router.get('/calendar', ctrl.calendar);
+router.post('/schedule', validate(scheduleCreate), ctrl.scheduleVisit);
+router.put('/schedule/:id', validate(scheduleUpdate), ctrl.updateSchedule);
+router.delete('/schedule/:id', ctrl.deleteSchedule);
+router.get('/team', authorize('manager', 'admin'), ctrl.teamActivities);
+router.get('/:id', ctrl.getActivity);
+router.post('/:id/checkout', validate(checkOut), ctrl.checkOut);
+router.put('/:id/follow-up', ctrl.updateFollowUp);
+router.post('/:id/follow-up/complete', ctrl.completeFollowUp);
+router.put('/:id', validate(updateActivitySchema), ctrl.updateActivity);
+router.delete('/:id', ctrl.deleteActivity);
+
+module.exports = router;

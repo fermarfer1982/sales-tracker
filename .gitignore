@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+!*.env.example
+!frontend/.env.e2e.example
+*.log
+.DS_Store
+Thumbs.db
+coverage/
+.nyc_output/
+frontend/test-results/
+frontend/playwright-report/
+playwright-report/
+# Local/private deployment material
+certs/
+importar/*.csv
+importar/*.xlsx
+importar/*.xls
+*.key
+*.crt
+*.cer
+*.csr
+# Local e2e/private runtime overrides
+frontend/.env.e2e
+backend/.env
+# Generated/local browser artifacts
